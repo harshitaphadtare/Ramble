@@ -167,7 +167,6 @@ script-src 'self' 'wasm-unsafe-eval';
 worker-src 'self';
 connect-src 'self'
             https://tiles.openfreemap.org
-            https://overpass-api.de https://overpass.kumi.systems
             https://photon.komoot.io
             https://api.open-meteo.com
             https://routing.openstreetmap.de
@@ -257,7 +256,7 @@ flowchart TD
 ### 5.8 Location privacy [P1]
 - **Ask with context:** location is requested only after an explanation.
 - **Foreground only:** `watchPosition` runs only in walk mode. There's no background tracking.
-- **Rounding:** the Overpass bbox is snapped to about 5 km, Open-Meteo and Photon get 2 decimals (about 1 km), and routing gets the exact endpoints (disclosed).
+- **Rounding:** places come from our , which only accepts a ~5 km grid-cell centre (the API rejects anything else), and Overpass only ever sees our server. Open-Meteo and Photon get 2 decimals (about 1 km), and routing gets the exact endpoints (disclosed).
 - No identifiers or cookies are sent to third parties. `Referrer-Policy: no-referrer`.
 - [L] Home privacy zone for shared tracks.
 

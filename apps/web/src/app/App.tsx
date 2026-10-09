@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MapView } from '../features/map/MapView';
+import { ExplorePanel } from '../features/explore/ExplorePanel';
 
 type Tab = 'explore' | 'checkin' | 'you';
 
@@ -15,6 +16,7 @@ export function App() {
   return (
     <div className="relative h-full w-full overflow-hidden">
       <MapView />
+      {tab === 'explore' && <ExplorePanel />}
 
       <nav
         aria-label="Main"

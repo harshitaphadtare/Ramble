@@ -4,13 +4,18 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { requestId } from 'hono/request-id';
 import { SECURITY_HEADERS } from './security';
 import { logger } from './middleware/logger';
+import { err } from './lib/errors';
+import { aiRoutes, type AiRouteOptions } from './routes/ai';
+import { placesRoutes, type PlacesRouteOptions } from './routes/places';
 
 export interface AppOptions {
   /** Directory with the built PWA. Omit to serve the API only (dev / tests). */
   staticRoot?: string;
+  ai?: AiRouteOptions;
+  places?: PlacesRouteOptions;
 }
 
-export function createApp({ staticRoot }: AppOptions = {}) {
+export function createApp({ staticRoot, ai, places }: AppOptions = {}) {
   const app = new Hono();
 
   app.use(requestId());
@@ -19,7 +24,8 @@ export function createApp({ staticRoot }: AppOptions = {}) {
   // Security headers on every response, static files included.
   app.use(async (c, next) => {
     await next();
-    for (const [k, v] of Object.entries(SECURITY_HEADERS)) c.header(k, v);  });
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) c.header(k, v);
+  });
 
   const api = new Hono();
   api.use(bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json(err('too_large', 'Request too large'), 413) }));
@@ -29,6 +35,8 @@ export function createApp({ staticRoot }: AppOptions = {}) {
   });
 
   api.get('/health', (c) => c.json({ ok: true }));
+  api.route('/ai', aiRoutes(ai));
+  api.route('/places', placesRoutes(places));
 
   // Catch-all must be registered last: a mounted sub-app's notFound handler is never used by the parent.
   api.all('*', (c) => c.json(err('not_found', 'Not found'), 404));
@@ -62,10 +70,6 @@ export function createApp({ staticRoot }: AppOptions = {}) {
   }
 
   return app;
-}
-
-export function err(code: string, message: string) {
-  return { error: { code, message } };
 }
 
 function hasExtension(path: string) {

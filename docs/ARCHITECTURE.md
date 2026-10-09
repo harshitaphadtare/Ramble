@@ -76,7 +76,7 @@ flowchart LR
     API -- prompts: public place names + context,<br/>or a note the user chose to polish --> CF[Cloudflare Workers AI<br/>Gemma 4 26B]
 
     PWA -- map tiles --> OFM[OpenFreeMap]
-    PWA -- outdoor places, rounded bbox --> OVP[Overpass / OSM]
+    API -- outdoor places for a ~5 km grid cell,<br/>cached 24 h, shared --> OVP[Overpass / OSM]
     PWA -- search --> PH[Photon]
     PWA -- forecast, rounded --> OM[Open-Meteo]
     PWA -- walking route --> RT[OSRM routing]
@@ -95,7 +95,7 @@ flowchart LR
 | **Resend** | The email address, for verification and password-reset emails only | Anything else |
 | **Cloudflare Workers AI** | Suggestion prompts (public place names, distances, time, mood, weather); trail-update snippets; a journal note **only when the user taps ✨ Polish** | Coordinates, user identity or IP (proxied), anything automatically from the journal. Cloudflare's docs state prompts and outputs aren't used for training or stored |
 | OpenFreeMap | The map tiles you view | Your data |
-| Overpass | A **rounded** bounding box of about 5 km | Your exact location, your history |
+| Overpass (via our server) | A ~5 km grid cell, once per cell per day (shared cache), with a Ramble User-Agent | Your location, your IP, your history |
 | Photon | Search text + a rounded bias point | Your history |
 | Open-Meteo | Lat/lon at 2 decimals (~1 km) | Anything else |
 | Routing | The start and end of a route you request | Your history |
@@ -182,7 +182,7 @@ All open source unless marked (SaaS). Exact versions are pinned in `package-lock
 | Auth client | **better-auth** client |
 | Map | **MapLibre GL JS** v6 (worker served from our own origin, so no `blob:` workers), **OpenFreeMap** Liberty |
 | Geo | **kdbush** + **geokdbush**, **suncalc**, polyline encoding |
-| Places / search / weather / routing | **Overpass** (OSM), **Photon**, **Open-Meteo**, **OSRM** (FOSSGIS) |
+| Places / search / weather / routing | **Overpass** (OSM, via our ), **Photon**, **Open-Meteo**, **OSRM** (FOSSGIS) |
 | Database | **Dexie** (IndexedDB) |
 | PWA | **vite-plugin-pwa** (Workbox, `injectManifest`) |
 | Crypto | **WebCrypto** (AES-GCM-256, AES-KW, HKDF, SHA-256) + **hash-wasm** (Argon2id) |
