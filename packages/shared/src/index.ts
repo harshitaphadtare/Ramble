@@ -5,3 +5,4 @@ export * from './suggest';
 export * from './places';
 export * from './domain';
 export * from './overpass';
+export * from './polish';

@@ -3,7 +3,10 @@ import * as maplibregl from 'maplibre-gl';
 // Serve MapLibre's worker from our own origin so the CSP can keep `worker-src 'self'` (no blob: workers).
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import type { FeatureCollection } from 'geojson';
+import { levelFor, type Place, type Visit } from '@ramble/shared';
 import { useMapStore, type MapPin } from '../../app/store/mapStore';
+import { useUiStore } from '../../app/store/uiStore';
+import { useUserStore } from '../../app/store/userStore';
 import type { LonLat } from '../../lib/geo/geo';
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -13,6 +16,7 @@ const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const DEFAULT_CENTER: LonLat = [144.9631, -37.8136];
 const PINS = 'ramble-pins';
 const ME = 'ramble-me';
+const SAVED = 'ramble-saved';
 
 function pinsGeoJSON(pins: MapPin[], selectedId: string | null): FeatureCollection {
   return {
@@ -33,8 +37,38 @@ function meGeoJSON(pos: LonLat | null): FeatureCollection {
   };
 }
 
-/** Our own layers: the user's position and the numbered suggestion pins. */
+/** The user's places, coloured by level. */
+function savedGeoJSON(places: Place[], visits: Visit[]): FeatureCollection {
+  const counts = new Map<string, number>();
+  for (const v of visits) counts.set(v.placeId, (counts.get(v.placeId) ?? 0) + 1);
+  return {
+    type: 'FeatureCollection',
+    features: places.map((p) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: p.lonLat },
+      properties: { id: p.id, name: p.name, color: levelFor(counts.get(p.id) ?? 0).color },
+    })),
+  };
+}
+
+/** Our own layers, bottom to top: saved places, the user's position, suggestion pins. */
 function addRambleLayers(m: maplibregl.Map) {
+  m.addSource(SAVED, { type: 'geojson', data: savedGeoJSON([], []) });
+  m.addLayer({
+    id: `${SAVED}-dot`,
+    type: 'circle',
+    source: SAVED,
+    paint: { 'circle-radius': 9, 'circle-color': ['get', 'color'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 },
+  });
+  m.addLayer({
+    id: `${SAVED}-label`,
+    type: 'symbol',
+    source: SAVED,
+    minzoom: 14,
+    layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, 1.3], 'text-anchor': 'top', 'text-optional': true },
+    paint: { 'text-color': '#1d3a2a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+  });
+
   m.addSource(ME, { type: 'geojson', data: meGeoJSON(null) });
   m.addLayer({
     id: `${ME}-halo`,
@@ -83,6 +117,8 @@ export function MapView() {
   const pins = useMapStore((s) => s.pins);
   const selectedId = useMapStore((s) => s.selectedId);
   const userPos = useMapStore((s) => s.userPos);
+  const places = useUserStore((s) => s.places);
+  const visits = useUserStore((s) => s.visits);
 
   useEffect(() => {
     if (!container.current) return;
@@ -120,6 +156,23 @@ export function MapView() {
   useEffect(() => {
     (map?.getSource(ME) as maplibregl.GeoJSONSource | undefined)?.setData(meGeoJSON(userPos));
   }, [map, userPos]);
+
+  useEffect(() => {
+    (map?.getSource(SAVED) as maplibregl.GeoJSONSource | undefined)?.setData(savedGeoJSON(places, visits));
+  }, [map, places, visits]);
+
+  // Tapping one of your places opens its details.
+  useEffect(() => {
+    if (!map) return;
+    const onClick = (e: maplibregl.MapLayerMouseEvent) => {
+      const id = e.features?.[0]?.properties?.id;
+      if (typeof id === 'string') useUiStore.getState().openPlace(id);
+    };
+    map.on('click', `${SAVED}-dot`, onClick);
+    return () => {
+      map.off('click', `${SAVED}-dot`, onClick);
+    };
+  }, [map]);
 
   // Tapping a pin selects its card.
   useEffect(() => {

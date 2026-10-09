@@ -69,7 +69,7 @@ const API_PATIENCE_MS = 8000;
  * API_PATIENCE_MS; after that the tile places are used and the API keeps going in the
  * background to fill the cache for next time. Explore never waits long and never dead-ends.
  */
-async function placesNear(origin: LonLat, map: MapLibreMap | null, signal?: AbortSignal): Promise<OutdoorPlace[]> {
+export async function placesNear(origin: LonLat, map: MapLibreMap | null, signal?: AbortSignal): Promise<OutdoorPlace[]> {
   const cell = `${snapToGrid(origin[1])},${snapToGrid(origin[0])}`;
   const hit = areaCache.get(cell) ?? readStored(cell);
   if (hit) return hit;

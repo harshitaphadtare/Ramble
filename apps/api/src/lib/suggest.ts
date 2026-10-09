@@ -1,5 +1,6 @@
 import { rulePicks, type Pick, type SuggestRequest, type SuggestResponse } from '@ramble/shared';
 import { AiUnavailableError, runGemma, type ChatMessage, type GemmaMeta } from './workersAi';
+import { cleanText, extractJsonObject } from './text';
 
 /**
  * Gemma ranks and explains; the app supplies the places. Prompts are built here from fixed
@@ -29,46 +30,10 @@ export function buildMessages({ context, candidates }: SuggestRequest): ChatMess
   ];
 }
 
-/** Strips control and bidi-override characters and collapses whitespace. */
-function cleanText(s: string) {
-  return s
-    // Control characters and bidi overrides (U+202A-202E, U+2066-2069) can hide or reorder text.
-    // eslint-disable-next-line no-control-regex -- matching control characters is the point
-    .replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Finds the first JSON object with a "picks" array in a reply that may also contain code
- * fences, a preamble or thinking text with stray braces.
- */
+/** The picks array from the first JSON object that has one. */
 export function extractPicksJson(text: string): unknown[] | null {
-  const cleaned = text.replace(/```(?:json)?/gi, ' ');
-  for (let start = cleaned.indexOf('{'); start !== -1; start = cleaned.indexOf('{', start + 1)) {
-    let depth = 0;
-    let inString = false;
-    for (let i = start; i < cleaned.length; i++) {
-      const ch = cleaned[i];
-      if (inString) {
-        if (ch === '\\') i++; // skip the escaped character
-        else if (ch === '"') inString = false;
-        continue;
-      }
-      if (ch === '"') inString = true;
-      else if (ch === '{') depth++;
-      else if (ch === '}' && --depth === 0) {
-        try {
-          const parsed = JSON.parse(cleaned.slice(start, i + 1)) as { picks?: unknown };
-          if (Array.isArray(parsed.picks)) return parsed.picks;
-        } catch {
-          /* not this one; keep scanning */
-        }
-        break;
-      }
-    }
-  }
-  return null;
+  const obj = extractJsonObject(text, (o) => Array.isArray(o.picks));
+  return obj ? (obj.picks as unknown[]) : null;
 }
 
 /**

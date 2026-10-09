@@ -1,58 +1,48 @@
-import { useState } from 'react';
-import { AnimatePresence, LazyMotion, domMax, m } from 'motion/react';
-import { BookHeart, MapPinCheck } from 'lucide-react';
+import { useEffect } from 'react';
+import { AnimatePresence, LazyMotion, domMax } from 'motion/react';
 import { MapView } from '../features/map/MapView';
 import { ExplorePanel } from '../features/explore/ExplorePanel';
+import { CheckInPanel } from '../features/checkin/CheckInPanel';
+import { YouPanel } from '../features/you/YouPanel';
+import { PlaceSheet } from '../features/places/PlaceSheet';
+import { MemoryComposer } from '../features/journal/MemoryComposer';
+import { Celebration } from '../ui/Celebration';
+import { Toast } from '../ui/Toast';
 import { TopBar } from './TopBar';
-import { TabBar, type Tab } from './TabBar';
-
-/** Placeholder sheets for the tabs that are still being built. */
-function ComingSoon({ icon: Icon, title, text }: { icon: typeof MapPinCheck; title: string; text: string }) {
-  return (
-    <m.section
-      initial={{ y: 40, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 40, opacity: 0 }}
-      transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-      className="absolute inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 md:right-auto md:left-4 md:w-[400px] rounded-[28px] bg-cream/95 p-5 shadow-sheet backdrop-blur-xl"
-    >
-      <span className="mb-3 grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-sage to-moss text-white">
-        <Icon size={22} aria-hidden="true" />
-      </span>
-      <h2 className="font-display text-2xl font-semibold text-forest">{title}</h2>
-      <p className="mt-1 text-sm leading-relaxed text-ink/65">{text}</p>
-    </m.section>
-  );
-}
+import { TabBar } from './TabBar';
+import { useUiStore } from './store/uiStore';
+import { useUserStore } from './store/userStore';
 
 export function App() {
-  const [tab, setTab] = useState<Tab>('explore');
+  const tab = useUiStore((s) => s.tab);
+  const setTab = useUiStore((s) => s.setTab);
+  const status = useUserStore((s) => s.status);
+
+  // Unlock the encrypted on-device store once at start-up.
+  useEffect(() => {
+    void useUserStore.getState().init();
+  }, []);
 
   return (
     <LazyMotion features={domMax} strict>
       <div className="relative h-full w-full overflow-hidden">
         <MapView />
         <TopBar />
+        {status === 'error' && (
+          <p role="alert" className="absolute inset-x-3 top-20 z-40 rounded-2xl bg-ember px-4 py-3 text-sm font-semibold text-white shadow-float">
+            Your saved places couldn't be opened on this device. Private browsing can block storage; try a normal window.
+          </p>
+        )}
         <AnimatePresence mode="wait">
           {tab === 'explore' && <ExplorePanel key="explore" />}
-          {tab === 'checkin' && (
-            <ComingSoon
-              key="checkin"
-              icon={MapPinCheck}
-              title="Check in"
-              text="Tap once when you arrive somewhere. Every visit levels a place up, from Want to go to Local legend."
-            />
-          )}
-          {tab === 'you' && (
-            <ComingSoon
-              key="you"
-              icon={BookHeart}
-              title="Your map"
-              text="Your places, your walks and a private journal, encrypted on this phone."
-            />
-          )}
+          {tab === 'checkin' && <CheckInPanel key="checkin" />}
+          {tab === 'you' && <YouPanel key="you" />}
         </AnimatePresence>
+        <PlaceSheet />
+        <MemoryComposer />
         <TabBar tab={tab} onChange={setTab} />
+        <Toast />
+        <Celebration />
       </div>
     </LazyMotion>
   );

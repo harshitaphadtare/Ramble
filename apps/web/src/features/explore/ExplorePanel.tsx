@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { Check, Footprints, SlidersHorizontal, Sparkles, WifiOff, Zap } from 'lucide-react';
-import { MOODS, type Energy, type Mood } from '@ramble/shared';
+import { Bookmark, BookmarkCheck, Check, Footprints, MapPinCheck, SlidersHorizontal, Sparkles, WifiOff, Zap } from 'lucide-react';
+import { MOODS, type Energy, type Mood, type OutdoorPlace } from '@ramble/shared';
 import { useMapStore } from '../../app/store/mapStore';
+import { useUiStore } from '../../app/store/uiStore';
+import { useUserStore, visitsFor } from '../../app/store/userStore';
+import { LevelBadge } from '../../ui/Level';
 import { LocationButton, LocationError } from '../map/LocationButton';
 import type { LonLat } from '../../lib/geo/geo';
 import { KIND_STYLE, MOOD_STYLE, gradient } from '../../ui/visuals';
@@ -150,8 +153,68 @@ function PlaceCard({ card, rank, selected }: { card: ExploreCard; rank: number; 
           </p>
         </div>
       </div>
-      <p className="mt-3 text-[14px] leading-relaxed text-ink/75">{card.reason}</p>
+      <p className="mt-3 flex-1 text-[14px] leading-relaxed text-ink/75">{card.reason}</p>
+      <CardActions place={card.place} />
     </article>
+  );
+}
+
+/** Save for later, or check in on arrival. Stops the tap from also moving the map. */
+function CardActions({ place }: { place: OutdoorPlace }) {
+  const saved = useUserStore((st) => st.places.find((p) => p.sourceId === place.id));
+  const visits = useUserStore((st) => (saved ? visitsFor(st.visits, saved.id) : 0));
+  const { savePlace, toggleWantToGo, checkIn } = useUserStore.getState();
+  const { showToast, openComposer, openPlace } = useUiStore.getState();
+  const [busy, setBusy] = useState(false);
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const toggleSave = () =>
+    run(async () => {
+      if (!saved) {
+        await savePlace(place, true);
+        showToast(`Saved ${place.name} to Want to go`);
+      } else {
+        await toggleWantToGo(saved.id);
+      }
+    });
+
+  const arrived = () =>
+    run(async () => {
+      const p = saved ?? (await savePlace(place, false));
+      const visit = await checkIn(p.id);
+      showToast(`Checked in at ${p.name}`);
+      openComposer({ placeId: p.id, visitId: visit.id });
+    });
+
+  return (
+    <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <button type="button" onClick={() => void arrived()} disabled={busy} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-forest py-2 text-sm font-semibold text-white disabled:opacity-60">
+        <MapPinCheck size={15} aria-hidden="true" /> I'm here
+      </button>
+      <button
+        type="button"
+        onClick={() => void toggleSave()}
+        disabled={busy}
+        aria-pressed={!!saved?.wantToGo}
+        aria-label={saved?.wantToGo ? 'Remove from Want to go' : 'Save to Want to go'}
+        className={`grid size-9 place-items-center rounded-xl ${saved?.wantToGo ? 'bg-sunset text-white' : 'bg-mist text-forest'}`}
+      >
+        {saved?.wantToGo ? <BookmarkCheck size={16} aria-hidden="true" /> : <Bookmark size={16} aria-hidden="true" />}
+      </button>
+      {saved && (
+        <button type="button" onClick={() => openPlace(saved.id)} className="rounded-xl" aria-label={`Open ${place.name}`}>
+          <LevelBadge visits={visits} />
+        </button>
+      )}
+    </div>
   );
 }
 

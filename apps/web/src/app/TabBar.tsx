@@ -1,7 +1,8 @@
 import { Compass, MapPinCheck, Sprout, type LucideIcon } from 'lucide-react';
 import { m } from 'motion/react';
+import type { Tab } from './store/uiStore';
 
-export type Tab = 'explore' | 'checkin' | 'you';
+export type { Tab };
 
 const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: 'explore', label: 'Explore', icon: Compass },

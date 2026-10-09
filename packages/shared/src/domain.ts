@@ -55,12 +55,13 @@ export type RecordOf<K extends RecordKind> = z.infer<(typeof recordSchemas)[K]>;
 
 // ---------------------------------------------------------------- levels
 
+/** Same ladder and colours as Wander, where the idea started. */
 export const LEVELS = [
-  { id: 'want', label: 'Want to go', min: 0 },
-  { id: 'visited', label: 'Visited', min: 1 },
-  { id: 'favourite', label: 'Favourite', min: 2 },
-  { id: 'regular', label: 'Regular', min: 5 },
-  { id: 'legend', label: 'Local legend', min: 10 },
+  { id: 'want', label: 'Want to go', min: 0, color: '#8C877E' },
+  { id: 'visited', label: 'Visited', min: 1, color: '#12A187' },
+  { id: 'favourite', label: 'Favourite', min: 2, color: '#F29D0C' },
+  { id: 'regular', label: 'Regular', min: 5, color: '#E8457A' },
+  { id: 'legend', label: 'Local legend', min: 10, color: '#7357F6' },
 ] as const;
 export type LevelId = (typeof LEVELS)[number]['id'];
 
