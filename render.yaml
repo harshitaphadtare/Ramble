@@ -5,8 +5,9 @@ services:
     runtime: node
     name: ramble
     region: singapore
-    # Starter never sleeps (paid from the Hacktoberfest credit). Use `free` while building if preferred.
-    plan: starter
+    # Free plan: no card needed. It sleeps after 15 min idle (first request then takes ~30–60 s);
+    # the service worker still serves the app shell instantly on repeat visits. Wake it before demos.
+    plan: free
     # NODE_ENV=production makes npm skip devDependencies, but the build needs Vite, TypeScript and tsup.
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start

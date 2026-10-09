@@ -680,7 +680,7 @@ Email + password → derive the keys → sign in with the auth key → `GET /api
 - **Online lookups never block.** Suggestions render from rules and cache instantly, and TabPFN scores and updates **refine** the cards when they arrive.
 - **Sync** runs in the background and in batches. Pull is paginated.
 - **Server:** Hono on Node; Mongo indexes on every query path; connection pooling; shared SerpApi cache; gzip/brotli for JSON; static assets `immutable`.
-- **No cold starts:** Render **Starter** instance (paid with the Hacktoberfest Render credits), since the free tier sleeps after 15 minutes idle. Region **Singapore** (closest to Australia).
+- **Cold starts:** Render **free** instance (no card needed). It sleeps after 15 minutes idle, so the first request afterwards takes ~30–60 s. Repeat visits still open instantly because the service worker serves the app shell from cache; only API calls wait. Wake the service before demos. Region **Singapore** (closest to Australia).
 
 ---
 
@@ -699,7 +699,7 @@ services:
     runtime: node
     name: ramble
     region: singapore
-    plan: starter
+    plan: free
     buildCommand: npm ci && npm run build      # builds packages/shared, apps/web, apps/api
     startCommand: node apps/api/dist/index.js  # serves /api/* and the PWA's static files
     healthCheckPath: /api/health
