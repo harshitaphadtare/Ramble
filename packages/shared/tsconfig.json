@@ -1,4 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src"]
+  "compilerOptions": {
+    // Shared code runs in both the browser and Node 22, which both provide fetch, URL and AbortController.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src", "test"]
 }

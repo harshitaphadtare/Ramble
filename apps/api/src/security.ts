@@ -1,11 +1,15 @@
+import { OVERPASS_MIRRORS } from '@ramble/shared';
+
 /**
  * Content Security Policy and security headers. See docs/SECURITY.md §5.1–5.2.
  * Any host added to connect-src must also be added to the client's safeFetch allow-list.
- * AI calls (Workers AI), OSM places (Overpass), TabPFN, SerpApi and Atlas all go through our own API ('self').
+ * AI calls (Workers AI), TabPFN, SerpApi and Atlas go through our own API ('self').
  */
 export const CONNECT_SRC = [
   "'self'",
   'https://tiles.openfreemap.org',
+  // Overpass mirrors: the browser queries them directly (with the server as a backup).
+  ...OVERPASS_MIRRORS.map((u) => new URL(u).origin),
   'https://photon.komoot.io',
   'https://api.open-meteo.com',
   'https://routing.openstreetmap.de',

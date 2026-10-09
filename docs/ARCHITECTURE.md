@@ -95,7 +95,7 @@ flowchart LR
 | **Resend** | The email address, for verification and password-reset emails only | Anything else |
 | **Cloudflare Workers AI** | Suggestion prompts (public place names, distances, time, mood, weather); trail-update snippets; a journal note **only when the user taps ✨ Polish** | Coordinates, user identity or IP (proxied), anything automatically from the journal. Cloudflare's docs state prompts and outputs aren't used for training or stored |
 | OpenFreeMap | The map tiles you view | Your data |
-| Overpass (via our server) | A ~5 km grid cell, once per cell per day (shared cache), with a Ramble User-Agent | Your location, your IP, your history |
+| Overpass (browser direct, server as backup) | A ~5 km grid cell; the user's IP when the browser asks directly (sent with our origin as referrer, as Overpass requires) | Your exact location, your history |
 | Photon | Search text + a rounded bias point | Your history |
 | Open-Meteo | Lat/lon at 2 decimals (~1 km) | Anything else |
 | Routing | The start and end of a route you request | Your history |
