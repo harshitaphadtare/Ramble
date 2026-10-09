@@ -42,18 +42,24 @@ export function createApp({ staticRoot }: AppOptions = {}) {
   app.route('/api', api);
 
   if (staticRoot) {
-    // Hashed build assets never change, so they can be cached forever.
-    app.use('/assets/*', async (c, next) => {
-      await next();
-      if (c.res.ok) c.header('Cache-Control', 'public, max-age=31536000, immutable');
-    });
-    app.use('/*', serveStatic({ root: staticRoot }));
-    // SPA fallback: unknown paths get the app shell, which must always be revalidated.
-    app.get('*', serveStatic({ root: staticRoot, path: 'index.html' }));
+    // Caching rules must be registered before the static handlers, which end the chain.
     app.use('*', async (c, next) => {
       await next();
       const p = c.req.path;
-      if (p === '/' || p.endsWith('.html') || p === '/sw.js') c.header('Cache-Control', 'no-cache');
+      if (p.startsWith('/assets/') && c.res.ok) {
+        // Hashed build assets never change, so they can be cached forever.
+        c.header('Cache-Control', 'public, max-age=31536000, immutable');
+      } else if (p === '/' || p.endsWith('.html') || p === '/sw.js' || !hasExtension(p)) {
+        // The app shell and service worker must always be revalidated so updates arrive.
+        c.header('Cache-Control', 'no-cache');
+      }
+    });
+    app.use('/*', serveStatic({ root: staticRoot }));
+    // SPA fallback only for app routes. A missing file (e.g. /wasm/x.js) is a real 404,
+    // never index.html pretending to be a script.
+    app.get('*', async (c, next) => {
+      if (hasExtension(c.req.path)) return c.text('Not found', 404);
+      return serveStatic({ root: staticRoot, path: 'index.html' })(c, next);
     });
   }
 
@@ -62,4 +68,8 @@ export function createApp({ staticRoot }: AppOptions = {}) {
 
 export function err(code: string, message: string) {
   return { error: { code, message } };
+}
+
+function hasExtension(path: string) {
+  return /\.[a-z0-9]+$/i.test(path.split('/').pop() ?? '');
 }

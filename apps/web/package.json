@@ -4,10 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/copy-runtimes.mjs",
-    "dev": "vite",
-    "prebuild": "node scripts/copy-runtimes.mjs",
-    "build": "tsc -p tsconfig.json && vite build",
+    "dev": "node scripts/copy-runtimes.mjs && vite",
+    "build": "node scripts/copy-runtimes.mjs && tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json"
   },
