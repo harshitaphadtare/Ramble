@@ -182,7 +182,7 @@ All open source unless marked (SaaS). Exact versions are pinned in `package-lock
 | Auth client | **better-auth** client |
 | Map | **MapLibre GL JS** v6 (worker served from our own origin, so no `blob:` workers), **OpenFreeMap** Liberty |
 | Geo | **kdbush** + **geokdbush**, **suncalc**, polyline encoding |
-| Places / search / weather / routing | **Overpass** (OSM, via our ), **Photon**, **Open-Meteo**, **OSRM** (FOSSGIS) |
+| Places / search / weather / routing | **Overpass** (OSM, via our `/api/places`), **Photon**, **Open-Meteo**, **OSRM** (FOSSGIS) |
 | Database | **Dexie** (IndexedDB) |
 | PWA | **vite-plugin-pwa** (Workbox, `injectManifest`) |
 | Crypto | **WebCrypto** (AES-GCM-256, AES-KW, HKDF, SHA-256) + **hash-wasm** (Argon2id) |
