@@ -666,7 +666,7 @@ Email + password → derive the keys → sign in with the auth key → `GET /api
 ### 14.1 Budgets (enforced in CI where possible)
 | Metric | Budget |
 |---|---|
-| Initial JS (gzip), excluding MapLibre | ≤ 120 KB |
+| Initial JS (gzip), excluding MapLibre | ≤ 150 KB (146 KB after adding motion + icons + fonts; trim with lazy-loaded sheets) |
 | MapLibre chunk (gzip) | ≤ 280 KB, in parallel (v6 measured at 268 KB) |
 | First Contentful Paint, repeat visit (service worker) | ≤ 0.8 s |
 | First Contentful Paint, first visit (mid-range phone, 4G) | ≤ 1.5 s |

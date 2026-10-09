@@ -36,6 +36,12 @@ registerRoute(
   }),
 );
 
+// Self-hosted fonts: only the subsets a page actually uses are fetched, so cache them on first use.
+registerRoute(
+  ({ url }) => url.origin === self.location.origin && url.pathname.endsWith('.woff2'),
+  new CacheFirst({ cacheName: 'fonts', plugins: [okOnly, new ExpirationPlugin({ maxEntries: 30 })] }),
+);
+
 // The API is never cached by the service worker.
 
 self.addEventListener('message', (event) => {

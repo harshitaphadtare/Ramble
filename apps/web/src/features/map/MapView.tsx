@@ -19,14 +19,14 @@ function pinsGeoJSON(pins: MapPin[], selectedId: string | null): FeatureCollecti
       type: 'Feature',
       id: p.rank,
       geometry: { type: 'Point', coordinates: p.lonLat },
-      properties: { rank: String(p.rank), selected: p.id === selectedId },
+      properties: { rank: String(p.rank), selected: p.id === selectedId, color: p.color },
     })),
   };
 }
 
 export function MapView() {
   const container = useRef<HTMLDivElement>(null);
-  const { setMap, setUserPos, select } = useMapStore.getState();
+  const { setMap, setUserPos, setLocate, select } = useMapStore.getState();
   const pins = useMapStore((s) => s.pins);
   const selectedId = useMapStore((s) => s.selectedId);
   const map = useMapStore((s) => s.map);
@@ -53,22 +53,36 @@ export function MapView() {
       trackUserLocation: false,
       showAccuracyCircle: true,
     });
-    m.addControl(locate, 'top-left');
+    // The control's own button is hidden (see index.css); our UI calls trigger() instead.
+    m.addControl(locate, 'top-right');
     locate.on('geolocate', (e) => setUserPos([e.coords.longitude, e.coords.latitude]));
+    setLocate(() => () => locate.trigger());
 
     m.on('load', () => {
+      // MapLibre opens the compact attribution on first load; start it collapsed (still one tap away).
+      container.current?.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show');
       m.addSource(PINS, { type: 'geojson', data: pinsGeoJSON([], null) });
       m.addLayer({
         id: `${PINS}-circle`,
         type: 'circle',
         source: PINS,
         paint: {
-          'circle-radius': ['case', ['get', 'selected'], 17, 14],
-          'circle-color': ['case', ['get', 'selected'], '#e8833a', '#1f3d2b'],
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 3,
+          'circle-radius': ['case', ['get', 'selected'], 18, 14],
+          'circle-color': ['get', 'color'],
+          'circle-stroke-color': ['case', ['get', 'selected'], '#ee8a3f', '#ffffff'],
+          'circle-stroke-width': ['case', ['get', 'selected'], 4, 3],
         },
       });
+      m.addLayer(
+        {
+          id: `${PINS}-halo`,
+          type: 'circle',
+          source: PINS,
+          filter: ['==', ['get', 'selected'], true],
+          paint: { 'circle-radius': 30, 'circle-color': '#ee8a3f', 'circle-opacity': 0.22, 'circle-blur': 0.4 },
+        },
+        `${PINS}-circle`,
+      );
       m.addLayer({
         id: `${PINS}-label`,
         type: 'symbol',
@@ -81,9 +95,10 @@ export function MapView() {
 
     return () => {
       setMap(null);
+      setLocate(null);
       m.remove();
     };
-  }, [setMap, setUserPos]);
+  }, [setMap, setUserPos, setLocate]);
 
   // Keep the pin layer in sync with the store.
   useEffect(() => {
@@ -97,7 +112,7 @@ export function MapView() {
     const onClick = (e: maplibregl.MapLayerMouseEvent) => {
       const rank = Number(e.features?.[0]?.properties?.rank);
       const pin = useMapStore.getState().pins.find((p) => p.rank === rank);
-      if (pin) select(pin.id);
+      if (pin) select(pin.id, 'map');
     };
     map.on('click', `${PINS}-circle`, onClick);
     return () => {

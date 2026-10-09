@@ -39,6 +39,8 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    // Never inline assets as data: URIs; the CSP only allows fonts from our own origin.
+    assetsInlineLimit: 0,
     rollupOptions: {
       output: {
         // The map engine is big and changes rarely: its own long-cached chunk, loaded alongside the shell.

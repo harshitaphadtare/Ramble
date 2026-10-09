@@ -1,44 +1,59 @@
 import { useState } from 'react';
+import { AnimatePresence, LazyMotion, domMax, m } from 'motion/react';
+import { BookHeart, MapPinCheck } from 'lucide-react';
 import { MapView } from '../features/map/MapView';
 import { ExplorePanel } from '../features/explore/ExplorePanel';
+import { TopBar } from './TopBar';
+import { TabBar, type Tab } from './TabBar';
 
-type Tab = 'explore' | 'checkin' | 'you';
-
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'explore', label: 'Explore', icon: '🧭' },
-  { id: 'checkin', label: 'Check in', icon: '📍' },
-  { id: 'you', label: 'You', icon: '🌿' },
-];
+/** Placeholder sheets for the tabs that are still being built. */
+function ComingSoon({ icon: Icon, title, text }: { icon: typeof MapPinCheck; title: string; text: string }) {
+  return (
+    <m.section
+      initial={{ y: 40, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 40, opacity: 0 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+      className="absolute inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 rounded-[28px] bg-cream/95 p-5 shadow-sheet backdrop-blur-xl"
+    >
+      <span className="mb-3 grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-sage to-moss text-white">
+        <Icon size={22} aria-hidden="true" />
+      </span>
+      <h2 className="font-display text-2xl font-semibold text-forest">{title}</h2>
+      <p className="mt-1 text-sm leading-relaxed text-ink/65">{text}</p>
+    </m.section>
+  );
+}
 
 export function App() {
   const [tab, setTab] = useState<Tab>('explore');
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      <MapView />
-      {tab === 'explore' && <ExplorePanel />}
-
-      <nav
-        aria-label="Main"
-        className="absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] flex justify-around rounded-2xl bg-white/95 p-1.5 shadow-lg backdrop-blur"
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            aria-current={tab === t.id ? 'page' : undefined}
-            className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-medium transition-colors ${
-              tab === t.id ? 'bg-forest text-white' : 'text-ink/70'
-            }`}
-          >
-            <span aria-hidden="true" className="text-lg leading-none">
-              {t.icon}
-            </span>
-            {t.label}
-          </button>
-        ))}
-      </nav>
-    </div>
+    <LazyMotion features={domMax} strict>
+      <div className="relative h-full w-full overflow-hidden">
+        <MapView />
+        <TopBar />
+        <AnimatePresence mode="wait">
+          {tab === 'explore' && <ExplorePanel key="explore" />}
+          {tab === 'checkin' && (
+            <ComingSoon
+              key="checkin"
+              icon={MapPinCheck}
+              title="Check in"
+              text="Tap once when you arrive somewhere. Every visit levels a place up, from Want to go to Local legend."
+            />
+          )}
+          {tab === 'you' && (
+            <ComingSoon
+              key="you"
+              icon={BookHeart}
+              title="Your map"
+              text="Your places, your walks and a private journal, encrypted on this phone."
+            />
+          )}
+        </AnimatePresence>
+        <TabBar tab={tab} onChange={setTab} />
+      </div>
+    </LazyMotion>
   );
 }
