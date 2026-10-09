@@ -8,6 +8,7 @@ import { useUserStore, visitsFor } from '../../app/store/userStore';
 import { useWalkStore } from '../../app/store/walkStore';
 import { useFeatures } from '../../app/store/featuresStore';
 import { readiness } from '../../lib/personalize/features';
+import { personalizeOptedIn } from '../../lib/personalize/consent';
 import { LevelBadge } from '../../ui/Level';
 import { LocationButton, LocationError } from '../map/LocationButton';
 import type { LonLat } from '../../lib/geo/geo';
@@ -238,7 +239,7 @@ function TasteHint() {
   const enabled = useFeatures((st) => st.personalize);
   const places = useUserStore((st) => st.places);
   const visits = useUserStore((st) => st.visits);
-  if (!enabled) return null;
+  if (!enabled || !personalizeOptedIn()) return null;
   const r = readiness(places, visits);
   return (
     <p className="mb-3 rounded-xl bg-forest/5 px-3 py-2 text-xs font-medium text-forest">
@@ -326,7 +327,7 @@ export function ExplorePanel() {
           map,
           signal: ctl.signal,
           user: { places: useUserStore.getState().places, visits: useUserStore.getState().visits },
-          personalize: useFeatures.getState().personalize,
+          personalize: useFeatures.getState().personalize && personalizeOptedIn(),
         },
       );
     } catch {

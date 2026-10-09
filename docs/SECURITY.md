@@ -478,42 +478,52 @@ Written in plain language on the in-app **Privacy** screen and in the README:
 
 ## 14. Security checklist by phase
 
-### P1: Core (offline app)
-- [ ] Hono serves the app with the CSP and all headers in §5.1–5.2; checked on the preview URL
+Status as of Oct 10, 2026. **[x]** = built and covered by tests or a live check; **[ ]** = not done (reason given); **[you]** = an account setting only you can change.
+
+### P1: Core
+- [x] Hono serves the app with the CSP and all headers in §5.1–5.2 (asserted in tests and by `npm run smoke` against the live site)
 - [x] MapLibre worker served from our own origin (no `blob:` workers); verified on Render
-- [ ] Gemma via the server only: fixed prompt templates, Zod-validated output, id allow-list, token caps, timeouts, rule fallback; prompts and outputs never logged
-- [ ] Cloudflare token scoped to Workers AI only; per-session and global daily AI budgets
-- [ ] Envelope encryption (AES-GCM-256, random IV, AAD) for every record and media blob
-- [ ] Device-key wrapping; DK non-extractable in memory; repository layer is the only path to the database
-- [ ] Photo re-encoding (EXIF stripped), file-type check, size caps
-- [ ] `safeFetch`: allow-list, timeouts, rounding, `credentials` rules
-- [ ] Zod schemas for model output and OSM data; id allow-list for AI picks
-- [ ] Lint bans on HTML sinks
-- [ ] Sentry: metrics only, scrubbers, opt-out
-- [ ] "Delete all data" with crypto-shredding; privacy screen
-- [ ] 2FA on all accounts; branch protection; secret scanning; private vulnerability reporting
-- [ ] CI: typecheck, lint, tests, audit, gitleaks, CodeQL
+- [x] Gemma via the server only: fixed prompt templates, validated output, id allow-list, token caps, timeouts, rule fallback; prompts and outputs never logged
+- [x] Per-IP and global daily AI budgets
+- [you] Cloudflare token scoped to Workers AI only (the "Workers AI" template does this)
+- [x] Envelope encryption (AES-GCM-256, random IV, AAD id:version) for every record and photo; tamper and swap tests
+- [x] Device-key wrapping; data key non-extractable in memory; the Vault is the only path to IndexedDB
+- [x] Photo re-encoding (metadata stripped), type sniffed from content, size caps
+- [x] Zod schemas for model output, OSM data, routes and every API body; id allow-list for AI picks
+- [x] Lint bans on HTML sinks and eval; CI fails on any violation
+- [x] Sentry: explicit spans only (no URLs, bodies or content), scrubbed events, user opt-out
+- [x] "Delete all data" with crypto-shredding; privacy text in the You tab
+- [ ] `safeFetch` wrapper: each call site sets its own timeout, `credentials` and validation instead (works, but not centralised yet)
+- [ ] Privacy screen listing every outbound service (the docs list them; the in-app list is still short)
+- [you] 2FA on GitHub, Render, Cloudflare, Atlas, Sentry, Prior Labs, SerpApi, Resend; GitHub secret scanning, push protection, private vulnerability reporting
+- [x] CI: audit, typecheck, lint, tests, build on every push (actions pinned to SHAs, read-only token)
+- [ ] CodeQL and gitleaks workflows (planned)
 
 ### P2: Online enhancements
-- [ ] Anonymous sessions; `requireSession` on `/api/personalize` and `/api/place-updates`
-- [ ] TabPFN: opt-in toggle, "what's sent" preview, strict 13-column schema, row caps, test asserting no names or coordinates
-- [ ] SerpApi: public names only (never custom pins), input charset rules, shared cache, per-session + global budgets
-- [ ] Web snippets rendered as plain text, `https:` links only, disclaimer shown
-- [ ] Server logging redaction; secrets only in Render environment variables
-- [ ] Share links (allow-list + preview); encrypted backups
+- [x] Online features rate-limited per IP plus global daily budgets (no session needed; see ARCHITECTURE "As built")
+- [x] TabPFN: strict 13-column integer schema, row caps, test asserting no names, coordinates or ids on the wire; cold start until enough history
+- [x] TabPFN is opt-in (off by default) with a plain description of exactly what is sent
+- [x] SerpApi: public places only (never named spots), charset rules, shared cache, per-IP limit, daily cap
+- [x] Web snippets rendered as plain text, `https:` links only, disclaimer shown
+- [x] Server logging redaction (no bodies, cookies, auth headers or query strings); secrets only in Render environment variables
+- [ ] Share links and encrypted backup file (later)
 
 ### P3: Accounts and sync
-- [ ] Argon2id → HKDF split (auth key / encryption key); the password never leaves the device
-- [ ] Password policy + breached-password check; generic auth errors; resistance to enumeration
-- [ ] Vault with wrapped DKs; recovery key with confirmation
-- [ ] Cookies `HttpOnly; Secure; SameSite=Lax; __Secure-`; fresh-session requirement for sensitive routes; device list
-- [ ] Every query scoped by `session.userId`; cross-user isolation tests; NoSQL injection tests
-- [ ] Rate limits and quotas as in §7.4
-- [ ] Atlas: IP allow-list (Render only), least-privilege user, separate dev and prod
-- [ ] Media: encrypted before upload, size and quota limits
-- [ ] Delete account (transactional) + email notices
+- [x] Argon2id → HKDF split (auth key / encryption key); the password never leaves the device (tests)
+- [x] Minimum password length; generic auth errors; sign-in and sign-up rate limits
+- [ ] Breached-password check (Have I Been Pwned range API) and strength meter
+- [x] Vault with wrapped data keys; recovery key shown once and confirmed by the user
+- [x] Cookies `HttpOnly; Secure; SameSite=Lax` with a `ramble` prefix (Better Auth)
+- [ ] Fresh-session requirement and a device list
+- [x] Every query scoped by the session user id; cross-user isolation and NoSQL-injection tests
+- [x] Record and photo quotas; strict schemas
+- [you] Atlas: network access list, least-privilege database user, separate dev and prod
+- [x] Photos encrypted on the device before upload; size and quota limits
+- [x] Delete account removes all synced data, sessions and the user
+- [x] Shared-device guard: another account can't absorb this device's places
 
 ### Later [L]
+- [ ] Passcode lock and auto-lock
 - [ ] Passkeys / Face ID (WebAuthn PRF), which also enable passwordless accounts
 - [ ] Trusted Types enforced everywhere
 - [ ] Sync-timing padding; signed sync manifests

@@ -33,6 +33,15 @@ await check('wake + health', async () => {
   must(r.ok, `HTTP ${r.status}`);
 });
 
+await check('partner features switched on', async () => {
+  const r = await get('/api/features');
+  must(r.ok, `HTTP ${r.status}`);
+  const f = await r.json();
+  const off = Object.entries(f).filter(([, on]) => !on).map(([k]) => k);
+  const on = Object.entries(f).filter(([, on]) => on).map(([k]) => k);
+  return off.length ? `WARN: on: ${on.join(', ') || 'none'} · off (add their keys in Render): ${off.join(', ')}` : `all on: ${on.join(', ')}`;
+});
+
 await check('app shell + security headers', async () => {
   const r = await get('/');
   must(r.ok, `HTTP ${r.status}`);

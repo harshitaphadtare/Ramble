@@ -10,6 +10,8 @@ import { KIND_STYLE, gradient } from '../../ui/visuals';
 import { JournalCard } from '../journal/JournalCard';
 import { AccountCard } from './AccountCard';
 import { setTelemetryOptOut, telemetryAvailable, telemetryOptedOut } from '../../lib/telemetry';
+import { personalizeOptedIn, setPersonalizeOptIn } from '../../lib/personalize/consent';
+import { useFeatures } from '../../app/store/featuresStore';
 
 type View = 'places' | 'journal';
 type Filter = 'all' | 'want';
@@ -21,6 +23,29 @@ function Stat({ icon: Icon, value, label, accent }: { icon: typeof Flame; value:
       <p className="mt-1 font-display text-2xl leading-none font-semibold">{value}</p>
       <p className={`text-[11px] font-semibold ${accent ? 'text-white/85' : 'text-ink/55'}`}>{label}</p>
     </div>
+  );
+}
+
+/** TabPFN personalisation is opt-in, with a plain description of exactly what is sent. */
+function PersonalizeToggle() {
+  const available = useFeatures((s) => s.personalize);
+  const [on, setOn] = useState(personalizeOptedIn);
+  if (!available) return null;
+  return (
+    <label className="mt-2 flex items-start gap-2">
+      <input
+        type="checkbox"
+        checked={on}
+        onChange={(e) => {
+          setPersonalizeOptIn(e.target.checked);
+          setOn(e.target.checked);
+        }}
+        className="mt-0.5 size-4 shrink-0 accent-forest"
+      />
+      <span>
+        <b className="text-forest">Smarter suggestions</b> (TabPFN). Learns which places you love from anonymous numbers only: place type, distance band, time of day, weekday or weekend, and how often you went back. Never names, places, coordinates or ids.
+      </span>
+    </label>
   );
 }
 
@@ -139,6 +164,7 @@ export function YouPanel() {
           <ShieldCheck size={14} aria-hidden="true" /> Private by design
         </p>
         Everything here is encrypted on this phone. Only encrypted copies leave it (if you turn on sync), plus a note when you tap ✨ Polish.
+        <PersonalizeToggle />
         <TelemetryToggle />
         {confirmWipe ? (
           <button

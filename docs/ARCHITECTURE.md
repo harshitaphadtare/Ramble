@@ -13,6 +13,27 @@
 
 ---
 
+## As built (Oct 10, 2026)
+
+The sections below are the design. This table records where the shipped code differs, so the docs never describe something that doesn't exist. Code paths are the source of truth.
+
+| Area | As built | Where |
+|---|---|---|
+| Feature switches | Every key-dependent feature turns itself on when its env vars are set. `GET /api/features` tells the app, which hides anything that's off | `apps/api/src/app.ts` |
+| Places | The browser queries Overpass directly (origin-only referrer), racing `/api/places` (server, User-Agent, 24 h shared cache); after 8 s it uses named places from the map tiles already loaded. Cached on the device for 7 days in `localStorage` (public OSM data) | `apps/web/src/lib/places/*`, `features/explore/explore.ts` |
+| Offline map | Tiles you've viewed are cached by the service worker. There's **no** background area prefetch yet | `apps/web/src/sw.ts` |
+| Device storage | IndexedDB tables `records`, `media`, `keys` only. Sync cursor and the places cache live in `localStorage` | `apps/web/src/lib/db/*` |
+| Walks | Live route + tracking; walks themselves aren't stored as records yet (the visit and journal entry are) | `app/store/walkStore.ts` |
+| Voice | Keyboard dictation into the note field; Ramble records no audio | `features/journal/MemoryComposer.tsx` |
+| Rate limits | In-memory per IP (+ global daily AI, SerpApi and TabPFN budgets); they reset when the free instance restarts | `apps/api/src/middleware/rateLimit.ts` |
+| Sessions for online features | Not needed: guests use Gemma, places, updates and TabPFN under per-IP limits. Better Auth's anonymous plugin isn't used | `apps/api/src/routes/*` |
+| Accounts | Better Auth email + derived auth key; Resend verification only when `RESEND_API_KEY` is set. **No password-reset email flow**: with end-to-end encryption, the recovery key is the way back in | `apps/api/src/lib/auth.ts`, `apps/web/src/lib/sync/account.ts` |
+| Server collections | Better Auth's own + `vaults`, `records`, `counters`, `media` (photos as ≤ 2 MB encrypted documents, not GridFS) | `apps/api/src/lib/syncStore.ts` |
+| Account routes | `/api/auth/*`, `/api/account/vault`, `/api/account/sync/push`, `/api/account/sync/pull`, `/api/account/media/:id`, `DELETE /api/account` | `apps/api/src/routes/account.ts` |
+| Not built yet [L] | Passcode lock, share links, encrypted backup file, Trusted Types, background area prefetch, EmbeddingGemma search | |
+
+---
+
 ## Contents
 1. [Design principles](#1-design-principles)
 2. [System context](#2-system-context)
