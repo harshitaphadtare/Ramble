@@ -14,6 +14,8 @@ Rules:
   walking time, sunset timing, never visited before, or why it suits the mood.
 - Never give safety advice or claim a place is safe, open or accessible.
 - distM is the one-way distance in metres; walking is about 80 m per minute.
+- visits is how many times they have ALREADY been there (0 = never been; 5 = an old favourite).
+- sunsetInMin is minutes until sunset (negative = already dark).
 Reply with JSON only, no other text: {"picks":[{"id":"...","reason":"..."}]}`;
 
 export function buildMessages({ context, candidates }: SuggestRequest): ChatMessage[] {
