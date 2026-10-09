@@ -1,0 +1,74 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f4ee;
+  --fg: #1c1f1d;
+  --muted: #5b6460;
+  --card: #ffffff;
+  --accent: #1f3d2b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121512;
+    --fg: #e8ebe7;
+    --muted: #9aa49e;
+    --card: #1c211d;
+    --accent: #7fb07a;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 16px 16px calc(32px + env(safe-area-inset-bottom));
+}
+h1 {
+  font-size: 1.5rem;
+  margin: 8px 0 4px;
+}
+h2 {
+  font-size: 1.05rem;
+  margin: 0 0 8px;
+}
+.muted {
+  color: var(--muted);
+  margin-top: 0;
+}
+section {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 14px 0;
+}
+button {
+  font: inherit;
+  font-weight: 600;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--accent);
+  color: #fff;
+  margin: 0 8px 8px 0;
+}
+button.secondary {
+  background: transparent;
+  color: var(--fg);
+  outline: 1px solid var(--muted);
+}
+button:disabled {
+  opacity: 0.5;
+}
+progress {
+  width: 100%;
+  height: 10px;
+}
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin: 8px 0 0;
+}

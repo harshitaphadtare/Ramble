@@ -1,0 +1,34 @@
+# Render blueprint: one web service serves the PWA and /api from the same origin.
+# See docs/ARCHITECTURE.md §15. Secrets are set in the Render dashboard (sync: false), never committed.
+services:
+  - type: web
+    runtime: node
+    name: ramble
+    region: singapore
+    # Starter never sleeps (paid from the Hacktoberfest credit). Use `free` while building if preferred.
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: TABPFN_API_KEY
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: VITE_SENTRY_DSN
+        sync: false

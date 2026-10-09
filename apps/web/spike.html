@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <title>Ramble · Gemma device test</title>
+  </head>
+  <body>
+    <main>
+      <h1>Gemma device test</h1>
+      <p class="muted">
+        Checks whether this device can run Ramble's on-device AI. The E2B model is a one-time ~2&nbsp;GB download,
+        so use Wi-Fi. Results stay on this device until you tap Copy.
+      </p>
+
+      <section>
+        <h2>1 · This device</h2>
+        <pre id="env">Checking…</pre>
+      </section>
+
+      <section>
+        <h2>2 · Gemma 4 E2B (main model)</h2>
+        <button id="e2b" type="button">Download &amp; test E2B</button>
+        <button id="e2b-clear" type="button" class="secondary">Delete cached model</button>
+        <progress id="e2b-progress" max="1" value="0" hidden></progress>
+        <pre id="e2b-out"></pre>
+      </section>
+
+      <section>
+        <h2>3 · Gemma 3 270M (small fallback)</h2>
+        <button id="small" type="button">Download &amp; test 270M</button>
+        <pre id="small-out"></pre>
+      </section>
+
+      <section>
+        <h2>4 · Share results</h2>
+        <button id="copy" type="button">Copy all results</button>
+      </section>
+    </main>
+    <script type="module" src="/src/spike/main.ts"></script>
+  </body>
+</html>
