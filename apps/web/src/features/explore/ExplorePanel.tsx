@@ -6,6 +6,8 @@ import { useMapStore } from '../../app/store/mapStore';
 import { useUiStore } from '../../app/store/uiStore';
 import { useUserStore, visitsFor } from '../../app/store/userStore';
 import { useWalkStore } from '../../app/store/walkStore';
+import { useFeatures } from '../../app/store/featuresStore';
+import { readiness } from '../../lib/personalize/features';
 import { LevelBadge } from '../../ui/Level';
 import { LocationButton, LocationError } from '../map/LocationButton';
 import type { LonLat } from '../../lib/geo/geo';
@@ -154,6 +156,11 @@ function PlaceCard({ card, rank, selected }: { card: ExploreCard; rank: number; 
           </p>
         </div>
       </div>
+      {card.love !== undefined && (
+        <p className="mt-2 inline-flex w-fit items-center gap-1 rounded-full bg-forest/10 px-2 py-0.5 text-[11px] font-bold text-forest" title="TabPFN, from your own visit history">
+          💚 {Math.round(card.love * 100)}% your kind of place
+        </p>
+      )}
       <p className="mt-3 flex-1 text-[14px] leading-relaxed text-ink/75">{card.reason}</p>
       <CardActions place={card.place} />
     </article>
@@ -223,6 +230,20 @@ function CardActions({ place }: { place: OutdoorPlace }) {
         </button>
       )}
     </div>
+  );
+}
+
+/** While personalisation is on but there isn't enough history yet, say so honestly. */
+function TasteHint() {
+  const enabled = useFeatures((st) => st.personalize);
+  const places = useUserStore((st) => st.places);
+  const visits = useUserStore((st) => st.visits);
+  if (!enabled) return null;
+  const r = readiness(places, visits);
+  return (
+    <p className="mb-3 rounded-xl bg-forest/5 px-3 py-2 text-xs font-medium text-forest">
+      {r.ready ? '💚 Picks are tuned to your taste (TabPFN, from your visits).' : `💚 Ramble is learning your taste: ${r.visited}/${r.needed} places visited.`}
+    </p>
   );
 }
 
@@ -301,7 +322,12 @@ export function ExplorePanel() {
           );
           if (!r.refining) fitPins(r.cards.map((c) => [c.place.lon, c.place.lat]));
         },
-        { map, signal: ctl.signal },
+        {
+          map,
+          signal: ctl.signal,
+          user: { places: useUserStore.getState().places, visits: useUserStore.getState().visits },
+          personalize: useFeatures.getState().personalize,
+        },
       );
     } catch {
       if (!ctl.signal.aborted) {
@@ -357,6 +383,7 @@ export function ExplorePanel() {
                   <LocationButton />
                 </div>
                 <LocationError />
+                <TasteHint />
 
                 <p className="mb-2 text-sm font-semibold text-ink/70">How long have you got?</p>
                 <Segmented id="time" options={TIMES} value={prefs.minutes} onChange={(minutes) => setPrefs({ ...prefs, minutes })} />

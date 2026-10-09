@@ -2,6 +2,7 @@ import * as SunCalc from 'suncalc';
 import {
   rankByRules,
   rulePicks,
+  personalizeResponseSchema,
   suggestResponseSchema,
   walkMinutes,
   type Candidate,
@@ -9,13 +10,16 @@ import {
   type Mood,
   type Pick,
   type OutdoorPlace,
+  type Place,
   type SuggestContext,
+  type Visit,
   snapToGrid,
 } from '@ramble/shared';
 import { distanceM, type LonLat } from '../../lib/geo/geo';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { fetchPlacesNear } from '../../lib/places/places';
 import { placesFromMapAround } from '../../lib/places/mapPlaces';
+import { buildRequest } from '../../lib/personalize/features';
 
 export interface ExplorePrefs {
   minutes: number;
@@ -27,6 +31,8 @@ export interface ExploreCard {
   place: OutdoorPlace;
   reason: string;
   walkMin: number;
+  /** TabPFN's estimate (0-1) that this is your kind of place, when personalisation is on. */
+  love?: number;
 }
 
 export interface ExploreResult {
@@ -102,11 +108,53 @@ export function minutesToSunset(origin: LonLat, now = new Date()): number {
   return Math.max(-1440, Math.min(1440, Math.round((sunset.getTime() - now.getTime()) / 60_000)));
 }
 
-function toCards(picks: Pick[], byId: Map<string, OutdoorPlace>, distById: Map<string, number>): ExploreCard[] {
+function toCards(picks: Pick[], byId: Map<string, OutdoorPlace>, distById: Map<string, number>, love: Map<string, number>): ExploreCard[] {
   return picks.flatMap((p) => {
     const place = byId.get(p.id);
-    return place ? [{ place, reason: p.reason, walkMin: walkMinutes(distById.get(p.id) ?? 0) }] : [];
+    return place ? [{ place, reason: p.reason, walkMin: walkMinutes(distById.get(p.id) ?? 0), love: love.get(p.id) }] : [];
   });
+}
+
+/**
+ * Asks TabPFN how likely you are to love each candidate (anonymous rows only) and re-ranks:
+ * 45% TabPFN, 55% the rule order. Returns the input unchanged if anything is missing or slow.
+ */
+async function personalise(
+  shortlist: Candidate[],
+  byId: Map<string, OutdoorPlace>,
+  user: { places: Place[]; visits: Visit[] },
+  signal?: AbortSignal,
+): Promise<{ ranked: Candidate[]; love: Map<string, number> }> {
+  const unchanged = { ranked: shortlist, love: new Map<string, number>() };
+  const req = buildRequest(
+    user.places,
+    user.visits,
+    shortlist.map((c) => ({ id: c.id, kind: c.kind, lonLat: [byId.get(c.id)!.lon, byId.get(c.id)!.lat] as LonLat })),
+  );
+  if (!req) return unchanged;
+  try {
+    const timeout = AbortSignal.timeout(30_000);
+    const res = await fetch('/api/personalize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(req),
+      credentials: 'same-origin',
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    });
+    if (!res.ok) return unchanged;
+    const { scores } = personalizeResponseSchema.parse(await res.json());
+    if (scores.length !== shortlist.length) return unchanged;
+    const love = new Map(shortlist.map((c, i) => [c.id, scores[i]!]));
+    const blended = (c: Candidate, i: number) => 0.45 * love.get(c.id)! + 0.55 * (1 - i / shortlist.length);
+    const ranked = shortlist
+      .map((c, i) => ({ c, s: blended(c, i) }))
+      .sort((a, b) => b.s - a.s)
+      .map((x) => x.c);
+    return { ranked, love };
+  } catch (e) {
+    if (signal?.aborted) throw e;
+    return unchanged;
+  }
 }
 
 /**
@@ -117,17 +165,30 @@ export async function explore(
   origin: LonLat,
   prefs: ExplorePrefs,
   onResult: (r: ExploreResult) => void,
-  { map = null, signal }: { map?: MapLibreMap | null; signal?: AbortSignal } = {},
+  {
+    map = null,
+    signal,
+    user = { places: [], visits: [] },
+    personalize = false,
+  }: { map?: MapLibreMap | null; signal?: AbortSignal; user?: { places: Place[]; visits: Visit[] }; personalize?: boolean } = {},
 ) {
   const places = await placesNear(origin, map, signal);
   const byId = new Map(places.map((p) => [p.id, p]));
   const distById = new Map(places.map((p) => [p.id, Math.round(distanceM(origin, [p.lon, p.lat]))]));
 
+  // How often you've been to each map place (via the places you saved from it).
+  const visitsBySource = new Map<string, number>();
+  for (const p of user.places) {
+    if (!p.sourceId) continue;
+    visitsBySource.set(p.sourceId, user.visits.filter((v) => v.placeId === p.id).length);
+  }
+
   const context: SuggestContext = { ...prefs, sunsetInMin: minutesToSunset(origin) };
   const candidates: Candidate[] = places
-    .map((p) => ({ id: p.id, kind: p.kind, name: p.name, distM: Math.min(50_000, distById.get(p.id)!), visits: 0 }))
+    .map((p) => ({ id: p.id, kind: p.kind, name: p.name, distM: Math.min(50_000, distById.get(p.id)!), visits: Math.min(10_000, visitsBySource.get(p.id) ?? 0) }))
     .filter((c) => c.distM > 30); // you're already there
-  const shortlist = rankByRules(context, candidates).slice(0, 15);
+  let shortlist = rankByRules(context, candidates).slice(0, 15);
+  let love = new Map<string, number>();
 
   if (shortlist.length === 0) {
     onResult({ cards: [], source: 'rules', refining: false });
@@ -135,8 +196,10 @@ export async function explore(
   }
 
   const online = navigator.onLine;
-  onResult({ cards: toCards(rulePicks(context, shortlist), byId, distById), source: 'rules', refining: online });
+  onResult({ cards: toCards(rulePicks(context, shortlist), byId, distById, love), source: 'rules', refining: online });
   if (!online) return;
+
+  if (personalize) ({ ranked: shortlist, love } = await personalise(shortlist, byId, user, signal));
 
   try {
     const res = await fetch('/api/ai/suggest', {
@@ -149,11 +212,11 @@ export async function explore(
     });
     if (!res.ok) throw new Error(`suggest ${res.status}`);
     const body = suggestResponseSchema.parse(await res.json());
-    const cards = toCards(body.picks, byId, distById);
+    const cards = toCards(body.picks, byId, distById, love);
     if (cards.length) onResult({ cards, source: body.source, refining: false });
-    else onResult({ cards: toCards(rulePicks(context, shortlist), byId, distById), source: 'rules', refining: false });
+    else onResult({ cards: toCards(rulePicks(context, shortlist), byId, distById, love), source: 'rules', refining: false });
   } catch (e) {
     if ((e as Error).name === 'AbortError' && signal?.aborted) return;
-    onResult({ cards: toCards(rulePicks(context, shortlist), byId, distById), source: 'rules', refining: false });
+    onResult({ cards: toCards(rulePicks(context, shortlist), byId, distById, love), source: 'rules', refining: false });
   }
 }

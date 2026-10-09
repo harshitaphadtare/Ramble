@@ -10,6 +10,8 @@ import { placesRoutes, type PlacesRouteOptions } from './routes/places';
 import { placeUpdatesRoutes, type PlaceUpdatesRouteOptions } from './routes/placeUpdates';
 import { isAiConfigured } from './lib/workersAi';
 import { serpApiKey } from './lib/serpapi';
+import { personalizeRoutes, type PersonalizeRouteOptions } from './routes/personalize';
+import { tabPfnKey } from './lib/tabpfn';
 
 export interface AppOptions {
   /** Directory with the built PWA. Omit to serve the API only (dev / tests). */
@@ -17,9 +19,10 @@ export interface AppOptions {
   ai?: AiRouteOptions;
   places?: PlacesRouteOptions;
   placeUpdates?: PlaceUpdatesRouteOptions;
+  personalize?: PersonalizeRouteOptions;
 }
 
-export function createApp({ staticRoot, ai, places, placeUpdates }: AppOptions = {}) {
+export function createApp({ staticRoot, ai, places, placeUpdates, personalize }: AppOptions = {}) {
   const app = new Hono();
 
   app.use(requestId());
@@ -42,8 +45,9 @@ export function createApp({ staticRoot, ai, places, placeUpdates }: AppOptions =
   api.route('/ai', aiRoutes(ai));
   api.route('/places', placesRoutes(places));
   api.route('/place-updates', placeUpdatesRoutes(placeUpdates));
+  api.route('/personalize', personalizeRoutes(personalize));
   // Which optional, key-dependent features are switched on, so the app can hide the rest.
-  api.get('/features', (c) => c.json({ ai: isAiConfigured(), placeUpdates: !!serpApiKey() }));
+  api.get('/features', (c) => c.json({ ai: isAiConfigured(), placeUpdates: !!serpApiKey(), personalize: !!tabPfnKey() }));
 
   // Catch-all must be registered last: a mounted sub-app's notFound handler is never used by the parent.
   api.all('*', (c) => c.json(err('not_found', 'Not found'), 404));
