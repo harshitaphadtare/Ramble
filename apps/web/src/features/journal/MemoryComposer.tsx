@@ -29,11 +29,13 @@ export function MemoryComposer() {
   const target = useUiStore((s) => s.composer);
   // Let a level-up celebration play first; the composer slides in once it's done.
   const celebrating = useUserStore((s) => s.celebration !== null);
-  return <AnimatePresence>{target && !celebrating && <Composer key={`${target.placeId}-${target.visitId}-${target.entryId}`} />}</AnimatePresence>;
+  // The target is passed as a prop so it stays valid while the sheet animates out after closing.
+  return <AnimatePresence>{target && !celebrating && <Composer key={`${target.placeId}-${target.visitId}-${target.entryId}`} target={target} />}</AnimatePresence>;
 }
 
-function Composer() {
-  const target = useUiStore((s) => s.composer)!;
+type ComposerTarget = NonNullable<ReturnType<typeof useUiStore.getState>['composer']>;
+
+function Composer({ target }: { target: ComposerTarget }) {
   const close = () => useUiStore.getState().openComposer(null);
   const { places, journal, saveJournal, putPhoto, getPhoto } = useUserStore();
   const existing = journal.find((j) => j.id === target.entryId);

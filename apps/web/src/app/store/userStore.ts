@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { levelFor, type JournalEntry, type OutdoorPlace, type Place, type Visit } from '@ramble/shared';
-import { Vault } from '../../lib/db/repo';
+import { vault } from '../../lib/db/instance';
+import { downloadPhoto } from '../../lib/sync/account';
 import type { LonLat } from '../../lib/geo/geo';
 
 /**
@@ -26,6 +27,8 @@ interface UserState {
   journal: JournalEntry[];
   celebration: LevelUp | null;
   init: () => Promise<void>;
+  /** Re-reads everything from the encrypted store (after a sync brought in changes). */
+  reload: () => Promise<void>;
   /** Saves a map place as one of yours (Want to go), or returns the existing one. */
   savePlace: (from: OutdoorPlace | { name: string; kind: Place['kind']; lonLat: LonLat }, wantToGo?: boolean) => Promise<Place>;
   toggleWantToGo: (placeId: string) => Promise<void>;
@@ -42,7 +45,6 @@ interface UserState {
   wipe: () => Promise<void>;
 }
 
-const vault = new Vault();
 const newId = () => crypto.randomUUID();
 
 export const visitsFor = (visits: Visit[], placeId: string) => visits.filter((v) => v.placeId === placeId).length;
@@ -64,6 +66,11 @@ export const useUserStore = create<UserState>((set, get) => ({
     } catch {
       set({ status: 'error' });
     }
+  },
+
+  reload: async () => {
+    const data = await vault.loadAll();
+    set({ places: data.place, visits: data.visit, journal: data.journal });
   },
 
   savePlace: async (from, wantToGo = true) => {
@@ -161,7 +168,12 @@ export const useUserStore = create<UserState>((set, get) => ({
     return id;
   },
 
-  getPhoto: (id) => vault.getMedia(id),
+  getPhoto: async (id) => {
+    const local = await vault.getMedia(id);
+    if (local || !navigator.onLine) return local;
+    // Synced from another device but not downloaded yet: fetch the encrypted copy (signed-in only).
+    return (await downloadPhoto(id)) ? vault.getMedia(id) : null;
+  },
 
   dismissCelebration: () => set({ celebration: null }),
 

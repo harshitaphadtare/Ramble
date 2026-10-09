@@ -4,14 +4,28 @@
     {
       "name": "ramble-prod-local",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["apps/api/dist/index.js"],
+      "runtimeArgs": [
+        "apps/api/dist/index.js"
+      ],
       "port": 8787
     },
     {
       "name": "ramble-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "ramble-accounts-local",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:accounts"
+      ],
+      "port": 8788
     }
   ]
 }

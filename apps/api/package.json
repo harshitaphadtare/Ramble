@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=../../.env.local src/index.ts",
     "build": "tsup",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "dev:accounts": "tsx src/dev-accounts.ts"
   },
   "dependencies": {
+    "@better-auth/mongo-adapter": "1.7.7",
     "@hono/node-server": "2.1.4",
     "@sentry/node": "11.6.0",
+    "better-auth": "1.7.7",
     "hono": "4.13.13",
+    "mongodb": "7.7.0",
     "pino": "10.4.0",
     "zod": "4.6.5"
   },

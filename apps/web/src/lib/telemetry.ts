@@ -57,3 +57,8 @@ export async function traced<T>(name: string, attrs: Attrs, fn: (set: (a: Attrs)
   if (!sdk || telemetryOptedOut()) return fn(() => {});
   return sdk.startSpan({ name, op: 'ramble.step', attributes: clean(attrs) }, (span) => fn((more) => span.setAttributes(clean(more))));
 }
+
+/** Reports an unexpected error (type and stack only; Sentry's request/user data is stripped). */
+export function reportError(error: unknown) {
+  if (sdk && !telemetryOptedOut()) sdk.captureException(error);
+}

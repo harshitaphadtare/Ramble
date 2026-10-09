@@ -46,3 +46,15 @@ export async function open(dk: CryptoKey, id: string, sealed: Sealed): Promise<U
 
 export const sealJson = (dk: CryptoKey, id: string, value: unknown) => seal(dk, id, new TextEncoder().encode(JSON.stringify(value)));
 export const openJson = async (dk: CryptoKey, id: string, sealed: Sealed): Promise<unknown> => JSON.parse(new TextDecoder().decode(await open(dk, id, sealed)));
+
+/**
+ * For account sync only: an extractable copy of the data key, so it can be re-wrapped for the
+ * account vault (or a new device). It's used immediately and never stored unwrapped.
+ */
+export function unwrapDataKeyForRewrap(wrapped: ArrayBuffer, kek: CryptoKey): Promise<CryptoKey> {
+  return subtle().unwrapKey('raw', wrapped, kek, 'AES-KW', { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+}
+
+export function wrapDataKey(dk: CryptoKey, kek: CryptoKey): Promise<ArrayBuffer> {
+  return subtle().wrapKey('raw', dk, kek, 'AES-KW');
+}

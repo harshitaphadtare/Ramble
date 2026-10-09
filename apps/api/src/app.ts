@@ -13,6 +13,9 @@ import { isAiConfigured } from './lib/workersAi';
 import { serpApiKey } from './lib/serpapi';
 import { personalizeRoutes, type PersonalizeRouteOptions } from './routes/personalize';
 import { tabPfnKey } from './lib/tabpfn';
+import { accountRoutes } from './routes/account';
+import type { RambleAuth } from './lib/auth';
+import type { SyncStore } from './lib/syncStore';
 
 export interface AppOptions {
   /** Directory with the built PWA. Omit to serve the API only (dev / tests). */
@@ -21,9 +24,11 @@ export interface AppOptions {
   places?: PlacesRouteOptions;
   placeUpdates?: PlaceUpdatesRouteOptions;
   personalize?: PersonalizeRouteOptions;
+  /** Optional accounts + end-to-end-encrypted sync (only when MongoDB is configured). */
+  accounts?: { auth: RambleAuth; store: SyncStore };
 }
 
-export function createApp({ staticRoot, ai, places, placeUpdates, personalize }: AppOptions = {}) {
+export function createApp({ staticRoot, ai, places, placeUpdates, personalize, accounts }: AppOptions = {}) {
   const app = new Hono();
 
   app.use(requestId());
@@ -36,7 +41,9 @@ export function createApp({ staticRoot, ai, places, placeUpdates, personalize }:
   });
 
   const api = new Hono();
-  api.use(bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json(err('too_large', 'Request too large'), 413) }));
+  const smallBodies = bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json(err('too_large', 'Request too large'), 413) });
+  // Encrypted photo uploads have their own, larger limit on that route.
+  api.use((c, next) => (c.req.path.startsWith('/api/account/media/') ? next() : smallBodies(c, next)));
   api.use(async (c, next) => {
     await next();
     c.header('Cache-Control', 'no-store');
@@ -48,7 +55,11 @@ export function createApp({ staticRoot, ai, places, placeUpdates, personalize }:
   api.route('/place-updates', placeUpdatesRoutes(placeUpdates));
   api.route('/personalize', personalizeRoutes(personalize));
   // Which optional, key-dependent features are switched on, so the app can hide the rest.
-  api.get('/features', (c) => c.json({ ai: isAiConfigured(), placeUpdates: !!serpApiKey(), personalize: !!tabPfnKey() }));
+  if (accounts) {
+    api.on(['GET', 'POST'], '/auth/*', (c) => accounts.auth.handler(c.req.raw));
+    api.route('/account', accountRoutes(accounts.auth, accounts.store));
+  }
+  api.get('/features', (c) => c.json({ ai: isAiConfigured(), placeUpdates: !!serpApiKey(), personalize: !!tabPfnKey(), accounts: !!accounts }));
 
   // Catch-all must be registered last: a mounted sub-app's notFound handler is never used by the parent.
   api.all('*', (c) => c.json(err('not_found', 'Not found'), 404));

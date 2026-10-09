@@ -18,7 +18,8 @@
     "test": "vitest run",
     "lint": "eslint .",
     "smoke": "node scripts/smoke.mjs",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm test && npm run build",
+    "dev:accounts": "npm run dev:accounts -w apps/api"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

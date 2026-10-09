@@ -8,6 +8,7 @@ import { LevelBadge } from '../../ui/Level';
 import { Eyebrow, Sheet, Title } from '../../ui/Sheet';
 import { KIND_STYLE, gradient } from '../../ui/visuals';
 import { JournalCard } from '../journal/JournalCard';
+import { AccountCard } from './AccountCard';
 import { setTelemetryOptOut, telemetryAvailable, telemetryOptedOut } from '../../lib/telemetry';
 
 type View = 'places' | 'journal';
@@ -131,11 +132,13 @@ export function YouPanel() {
         </div>
       )}
 
+      <AccountCard />
+
       <div className="mt-5 rounded-2xl bg-white p-3 text-xs leading-relaxed text-ink/60">
         <p className="mb-1 flex items-center gap-1.5 font-semibold text-forest">
           <ShieldCheck size={14} aria-hidden="true" /> Private by design
         </p>
-        Everything here is encrypted on this phone. Nothing leaves it unless you tap ✨ Polish on a note.
+        Everything here is encrypted on this phone. Only encrypted copies leave it (if you turn on sync), plus a note when you tap ✨ Polish.
         <TelemetryToggle />
         {confirmWipe ? (
           <button
