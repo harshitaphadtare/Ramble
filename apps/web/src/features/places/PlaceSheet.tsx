@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { Bookmark, BookmarkCheck, MapPinCheck, PenLine, Pencil, Trash } from 'lucide-react';
+import { Bookmark, BookmarkCheck, MapPinCheck, Navigation, PenLine, Pencil, Trash } from 'lucide-react';
 import { levelFor } from '@ramble/shared';
 import { useUiStore } from '../../app/store/uiStore';
 import { useUserStore, visitsFor } from '../../app/store/userStore';
+import { useWalkStore } from '../../app/store/walkStore';
 import { LevelBadge, LevelRing } from '../../ui/Level';
 import { KIND_STYLE, gradient } from '../../ui/visuals';
 import { Sheet, Title } from '../../ui/Sheet';
@@ -75,7 +76,7 @@ function Details({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-[1fr_auto_auto] gap-2">
+      <div className="mb-4 grid grid-cols-[1fr_auto_auto_auto] gap-2">
         <button type="button" onClick={() => void doCheckIn()} className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-forest to-moss py-3 font-bold text-white shadow-float">
           <MapPinCheck size={18} aria-hidden="true" /> I'm here
         </button>
@@ -87,6 +88,17 @@ function Details({ id }: { id: string }) {
           className={`grid size-12 place-items-center rounded-2xl ${place.wantToGo ? 'bg-sunset text-white' : 'bg-mist text-forest'}`}
         >
           {place.wantToGo ? <BookmarkCheck size={19} aria-hidden="true" /> : <Bookmark size={19} aria-hidden="true" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void useWalkStore.getState().start({ name: place.name, kind: place.kind, lonLat: place.lonLat, placeId: place.id, sourceId: place.sourceId });
+            openPlace(null);
+          }}
+          aria-label={`Walk to ${place.name}`}
+          className="grid size-12 place-items-center rounded-2xl bg-mist text-forest"
+        >
+          <Navigation size={19} aria-hidden="true" />
         </button>
         <button type="button" onClick={() => openComposer({ placeId: id })} aria-label="Write a memory" className="grid size-12 place-items-center rounded-2xl bg-mist text-forest">
           <PenLine size={19} aria-hidden="true" />

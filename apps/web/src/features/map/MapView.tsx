@@ -7,6 +7,7 @@ import { levelFor, type Place, type Visit } from '@ramble/shared';
 import { useMapStore, type MapPin } from '../../app/store/mapStore';
 import { useUiStore } from '../../app/store/uiStore';
 import { useUserStore } from '../../app/store/userStore';
+import { useWalkStore } from '../../app/store/walkStore';
 import type { LonLat } from '../../lib/geo/geo';
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -17,6 +18,7 @@ const DEFAULT_CENTER: LonLat = [144.9631, -37.8136];
 const PINS = 'ramble-pins';
 const ME = 'ramble-me';
 const SAVED = 'ramble-saved';
+const ROUTE = 'ramble-route';
 
 function pinsGeoJSON(pins: MapPin[], selectedId: string | null): FeatureCollection {
   return {
@@ -37,6 +39,13 @@ function meGeoJSON(pos: LonLat | null): FeatureCollection {
   };
 }
 
+function routeGeoJSON(route: { coords: LonLat[]; source: string } | null): FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: route ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: route.coords }, properties: { straight: route.source === 'straight' } }] : [],
+  };
+}
+
 /** The user's places, coloured by level. */
 function savedGeoJSON(places: Place[], visits: Visit[]): FeatureCollection {
   const counts = new Map<string, number>();
@@ -53,6 +62,32 @@ function savedGeoJSON(places: Place[], visits: Visit[]): FeatureCollection {
 
 /** Our own layers, bottom to top: saved places, the user's position, suggestion pins. */
 function addRambleLayers(m: maplibregl.Map) {
+  m.addSource(ROUTE, { type: 'geojson', data: routeGeoJSON(null) });
+  m.addLayer({
+    id: `${ROUTE}-casing`,
+    type: 'line',
+    source: ROUTE,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#ffffff', 'line-width': 9 },
+  });
+  // Real footpath route: solid. Straight-line fallback (offline): dashed. Dash patterns can't be
+  // data-driven in MapLibre, hence two filtered layers.
+  m.addLayer({
+    id: `${ROUTE}-line`,
+    type: 'line',
+    source: ROUTE,
+    filter: ['==', ['get', 'straight'], false],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#1d3a2a', 'line-width': 5 },
+  });
+  m.addLayer({
+    id: `${ROUTE}-straight`,
+    type: 'line',
+    source: ROUTE,
+    filter: ['==', ['get', 'straight'], true],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#1d3a2a', 'line-width': 4, 'line-dasharray': [1, 1.5] },
+  });
   m.addSource(SAVED, { type: 'geojson', data: savedGeoJSON([], []) });
   m.addLayer({
     id: `${SAVED}-dot`,
@@ -118,6 +153,7 @@ export function MapView() {
   const selectedId = useMapStore((s) => s.selectedId);
   const userPos = useMapStore((s) => s.userPos);
   const places = useUserStore((s) => s.places);
+  const route = useWalkStore((s) => s.route);
   const visits = useUserStore((s) => s.visits);
 
   useEffect(() => {
@@ -160,6 +196,21 @@ export function MapView() {
   useEffect(() => {
     (map?.getSource(SAVED) as maplibregl.GeoJSONSource | undefined)?.setData(savedGeoJSON(places, visits));
   }, [map, places, visits]);
+
+  useEffect(() => {
+    (map?.getSource(ROUTE) as maplibregl.GeoJSONSource | undefined)?.setData(routeGeoJSON(route));
+    if (map && route && route.coords.length > 1) {
+      const lons = route.coords.map((c) => c[0]);
+      const lats = route.coords.map((c) => c[1]);
+      map.fitBounds(
+        [
+          [Math.min(...lons), Math.min(...lats)],
+          [Math.max(...lons), Math.max(...lats)],
+        ],
+        { padding: { top: 150, bottom: 120, left: 40, right: 40 }, maxZoom: 16.5, duration: 800 },
+      );
+    }
+  }, [map, route]);
 
   // Tapping one of your places opens its details.
   useEffect(() => {

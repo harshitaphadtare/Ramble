@@ -8,6 +8,7 @@ import { PlaceSheet } from '../features/places/PlaceSheet';
 import { MemoryComposer } from '../features/journal/MemoryComposer';
 import { Celebration } from '../ui/Celebration';
 import { Toast } from '../ui/Toast';
+import { WalkBanner } from '../features/walk/WalkBanner';
 import { TopBar } from './TopBar';
 import { TabBar } from './TabBar';
 import { useUiStore } from './store/uiStore';
@@ -28,6 +29,7 @@ export function App() {
       <div className="relative h-full w-full overflow-hidden">
         <MapView />
         <TopBar />
+        <WalkBanner />
         {status === 'error' && (
           <p role="alert" className="absolute inset-x-3 top-20 z-40 rounded-2xl bg-ember px-4 py-3 text-sm font-semibold text-white shadow-float">
             Your saved places couldn't be opened on this device. Private browsing can block storage; try a normal window.

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { Bookmark, BookmarkCheck, Check, Footprints, MapPinCheck, SlidersHorizontal, Sparkles, WifiOff, Zap } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Check, Footprints, Navigation, MapPinCheck, SlidersHorizontal, Sparkles, WifiOff, Zap } from 'lucide-react';
 import { MOODS, type Energy, type Mood, type OutdoorPlace } from '@ramble/shared';
 import { useMapStore } from '../../app/store/mapStore';
 import { useUiStore } from '../../app/store/uiStore';
 import { useUserStore, visitsFor } from '../../app/store/userStore';
+import { useWalkStore } from '../../app/store/walkStore';
 import { LevelBadge } from '../../ui/Level';
 import { LocationButton, LocationError } from '../map/LocationButton';
 import type { LonLat } from '../../lib/geo/geo';
@@ -196,7 +197,14 @@ function CardActions({ place }: { place: OutdoorPlace }) {
 
   return (
     <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-      <button type="button" onClick={() => void arrived()} disabled={busy} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-forest py-2 text-sm font-semibold text-white disabled:opacity-60">
+      <button
+        type="button"
+        onClick={() => void useWalkStore.getState().start({ name: place.name, kind: place.kind, lonLat: [place.lon, place.lat], placeId: saved?.id, sourceId: place.id })}
+        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-forest py-2 text-sm font-semibold text-white"
+      >
+        <Navigation size={15} aria-hidden="true" /> Walk here
+      </button>
+      <button type="button" onClick={() => void arrived()} disabled={busy} className="flex items-center justify-center gap-1.5 rounded-xl bg-mist px-3 py-2 text-sm font-semibold text-forest disabled:opacity-60">
         <MapPinCheck size={15} aria-hidden="true" /> I'm here
       </button>
       <button
