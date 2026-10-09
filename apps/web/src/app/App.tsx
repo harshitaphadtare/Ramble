@@ -14,7 +14,7 @@ function ComingSoon({ icon: Icon, title, text }: { icon: typeof MapPinCheck; tit
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 40, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-      className="absolute inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 rounded-[28px] bg-cream/95 p-5 shadow-sheet backdrop-blur-xl"
+      className="absolute inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 md:right-auto md:left-4 md:w-[400px] rounded-[28px] bg-cream/95 p-5 shadow-sheet backdrop-blur-xl"
     >
       <span className="mb-3 grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-sage to-moss text-white">
         <Icon size={22} aria-hidden="true" />

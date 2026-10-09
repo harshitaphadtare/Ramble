@@ -265,7 +265,8 @@ export function ExplorePanel() {
   }`;
 
   return (
-    <div className="absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10">
+    // Phones: full-width bottom sheet. Larger screens: a floating panel on the left, like a desktop maps app.
+    <div className="absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 md:right-auto md:left-4 md:w-[420px]">
       <AnimatePresence mode="wait">
         {stage !== 'results' ? (
           <m.section

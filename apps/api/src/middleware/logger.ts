@@ -25,7 +25,8 @@ export function logger(): MiddlewareHandler {
     const log = rootLogger.child({ reqId: c.get('requestId') });
     c.set('log', log);
     await next();
-    if (!c.req.path.startsWith('/api')) return;
+    // Render pings /api/health every few seconds; logging those would bury everything else.
+    if (!c.req.path.startsWith('/api') || c.req.path === '/api/health') return;
     log.info({ method: c.req.method, path: c.req.path, status: c.res.status, ms: Math.round(performance.now() - start) });
   };
 }
