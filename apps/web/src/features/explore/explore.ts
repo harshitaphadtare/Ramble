@@ -13,7 +13,9 @@ import {
   snapToGrid,
 } from '@ramble/shared';
 import { distanceM, type LonLat } from '../../lib/geo/geo';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import { fetchPlacesNear } from '../../lib/places/places';
+import { placesFromMapAround } from '../../lib/places/mapPlaces';
 
 export interface ExplorePrefs {
   minutes: number;
@@ -34,17 +36,50 @@ export interface ExploreResult {
   refining: boolean;
 }
 
-// Places don't change minute to minute: keep the last few areas for this session.
+// Places don't change minute to minute. Public OSM data, so a plain on-device cache is fine.
 const areaCache = new Map<string, OutdoorPlace[]>();
+const WEEK = 7 * 24 * 60 * 60 * 1000;
+const storeKey = (cell: string) => `ramble.places.v1.${cell}`;
 
-async function placesNear(origin: LonLat, signal?: AbortSignal): Promise<OutdoorPlace[]> {
-  const key = `${snapToGrid(origin[0])},${snapToGrid(origin[1])}`;
-  const hit = areaCache.get(key);
+function readStored(cell: string): OutdoorPlace[] | null {
+  try {
+    const raw = localStorage.getItem(storeKey(cell));
+    if (!raw) return null;
+    const { at, places } = JSON.parse(raw) as { at: number; places: OutdoorPlace[] };
+    return Date.now() - at < WEEK && Array.isArray(places) ? places : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(cell: string, places: OutdoorPlace[]) {
+  try {
+    localStorage.setItem(storeKey(cell), JSON.stringify({ at: Date.now(), places }));
+  } catch {
+    /* storage full or blocked: the in-memory cache still works */
+  }
+}
+
+/**
+ * Best source first: memory → this device (7 days) → our API (OSM via Overpass) → the map
+ * tiles already on screen. The last one always works, offline included, so Explore never dead-ends.
+ */
+async function placesNear(origin: LonLat, map: MapLibreMap | null, signal?: AbortSignal): Promise<OutdoorPlace[]> {
+  const cell = `${snapToGrid(origin[1])},${snapToGrid(origin[0])}`;
+  const hit = areaCache.get(cell) ?? readStored(cell);
   if (hit) return hit;
-  const places = await fetchPlacesNear(origin, signal);
-  areaCache.set(key, places);
-  if (areaCache.size > 8) areaCache.delete(areaCache.keys().next().value!);
-  return places;
+  try {
+    const places = await fetchPlacesNear(origin, signal);
+    areaCache.set(cell, places);
+    if (areaCache.size > 8) areaCache.delete(areaCache.keys().next().value!);
+    writeStored(cell, places);
+    return places;
+  } catch (e) {
+    if (signal?.aborted) throw e;
+    const fromMap = map ? await placesFromMapAround(map, origin) : [];
+    if (fromMap.length) return fromMap; // not cached: the next try may get the fuller OSM list
+    throw e;
+  }
 }
 
 export function minutesToSunset(origin: LonLat, now = new Date()): number {
@@ -65,8 +100,13 @@ function toCards(picks: Pick[], byId: Map<string, OutdoorPlace>, distById: Map<s
  * Rules first (instant, works offline), then Gemma refines the same cards when online.
  * `onResult` is called once or twice. Throws only if places can't be loaded at all.
  */
-export async function explore(origin: LonLat, prefs: ExplorePrefs, onResult: (r: ExploreResult) => void, signal?: AbortSignal) {
-  const places = await placesNear(origin, signal);
+export async function explore(
+  origin: LonLat,
+  prefs: ExplorePrefs,
+  onResult: (r: ExploreResult) => void,
+  { map = null, signal }: { map?: MapLibreMap | null; signal?: AbortSignal } = {},
+) {
+  const places = await placesNear(origin, map, signal);
   const byId = new Map(places.map((p) => [p.id, p]));
   const distById = new Map(places.map((p) => [p.id, Math.round(distanceM(origin, [p.lon, p.lat]))]));
 

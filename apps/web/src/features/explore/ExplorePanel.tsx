@@ -229,7 +229,7 @@ export function ExplorePanel() {
           );
           if (!r.refining) fitPins(r.cards.map((c) => [c.place.lon, c.place.lat]));
         },
-        ctl.signal,
+        { map, signal: ctl.signal },
       );
     } catch {
       if (!ctl.signal.aborted) {
