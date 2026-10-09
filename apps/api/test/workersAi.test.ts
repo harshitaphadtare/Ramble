@@ -22,16 +22,23 @@ describe('workersAi', () => {
 
   it('calls the pinned Gemma model with a bearer token and returns the text', async () => {
     const fetchMock = ok({ response: '{"picks":[]}' });
-    const text = await runGemma([{ role: 'user', content: 'hi' }], {}, fetchMock);
+    const { text } = await runGemma([{ role: 'user', content: 'hi' }], {}, fetchMock);
     expect(text).toBe('{"picks":[]}');
+    const sent = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
+    expect(sent.chat_template_kwargs).toEqual({ enable_thinking: false });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(`https://api.cloudflare.com/client/v4/accounts/acct123/ai/run/${GEMMA_MODEL}`);
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer tok456');
   });
 
   it('accepts OpenAI-style responses too', async () => {
-    const text = await runGemma([{ role: 'user', content: 'hi' }], {}, ok({ choices: [{ message: { content: 'hello' } }] }));
+    const { text, meta } = await runGemma(
+      [{ role: 'user', content: 'hi' }],
+      {},
+      ok({ choices: [{ finish_reason: 'stop', message: { content: 'hello', reasoning_content: 'hmm' } }], usage: { prompt_tokens: 10, completion_tokens: 3 } }),
+    );
     expect(text).toBe('hello');
+    expect(meta).toEqual({ finishReason: 'stop', contentChars: 5, reasoningChars: 3, promptTokens: 10, completionTokens: 3 });
   });
 
   it('turns HTTP errors and empty results into AiUnavailableError (so callers fall back to rules)', async () => {

@@ -33,7 +33,9 @@ export function aiRoutes({ perHour = 30, dailyBudget = 400, run }: AiRouteOption
     }
     const result = await suggest(parsed.data, {
       run,
-      onFallback: (why) => log?.warn({ task: 'suggest', why }, 'gemma fallback'),
+      // Diagnostics only: finish reason, character and token counts. Never the prompt or reply.
+      onMeta: (meta) => log?.info({ task: 'suggest', ...meta }, 'gemma reply'),
+      onFallback: (why, meta) => log?.warn({ task: 'suggest', why, ...meta }, 'gemma fallback'),
     });
     // Metrics only: never prompts, outputs or place names (docs/SECURITY.md §7.7).
     log?.info({ task: 'suggest', source: result.source, ms: Math.round(performance.now() - started), n: parsed.data.candidates.length });

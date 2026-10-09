@@ -4,6 +4,8 @@ import { createApp } from '../src/app';
 import { buildMessages, parsePicks, suggest } from '../src/lib/suggest';
 import { AiUnavailableError } from '../src/lib/workersAi';
 
+const reply = (text: string) => ({ text, meta: { contentChars: text.length, reasoningChars: 0 } });
+
 const req: SuggestRequest = {
   context: { minutes: 60, mood: 'golden-hour', energy: 'easy', sunsetInMin: 48 },
   candidates: [
@@ -48,7 +50,7 @@ describe('buildMessages', () => {
 
 describe('suggest', () => {
   it('uses Gemma when its output is valid, topping up to 3 with rules', async () => {
-    const run = vi.fn(async () => '{"picks":[{"id":"p1","reason":"Catch the sunset from the lookout."}]}');
+    const run = vi.fn(async () => reply('{"picks":[{"id":"p1","reason":"Catch the sunset from the lookout."}]}'));
     const res = await suggest(req, { run });
     expect(res.source).toBe('gemma');
     expect(res.picks[0]).toEqual({ id: 'p1', reason: 'Catch the sunset from the lookout.' });
@@ -60,7 +62,7 @@ describe('suggest', () => {
     const down = await suggest(req, { run: vi.fn(async () => { throw new AiUnavailableError('down'); }) });
     expect(down.source).toBe('rules');
     expect(down.picks.length).toBeGreaterThan(0);
-    const junk = await suggest(req, { run: vi.fn(async () => 'blah') });
+    const junk = await suggest(req, { run: vi.fn(async () => reply('blah')) });
     expect(junk.source).toBe('rules');
   });
 });
@@ -74,7 +76,7 @@ describe('POST /api/ai/suggest', () => {
     });
 
   it('returns validated picks', async () => {
-    const app = createApp({ ai: { run: vi.fn(async () => '{"picks":[{"id":"p3","reason":"Easy trail nearby."}]}') } });
+    const app = createApp({ ai: { run: vi.fn(async () => reply('{"picks":[{"id":"p3","reason":"Easy trail nearby."}]}')) } });
     const res = await post(app, req);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { source: string; picks: { id: string }[] };
@@ -92,7 +94,7 @@ describe('POST /api/ai/suggest', () => {
   });
 
   it('rate-limits per IP and answers with rules once the daily budget is used', async () => {
-    const run = vi.fn(async () => '{"picks":[{"id":"p1","reason":"Go."}]}');
+    const run = vi.fn(async () => reply('{"picks":[{"id":"p1","reason":"Go."}]}'));
     const app = createApp({ ai: { run, perHour: 2, dailyBudget: 1 } });
     const ip = { 'x-forwarded-for': '203.0.113.9' };
     const first = (await (await post(app, req, ip)).json()) as { source: string };
@@ -103,5 +105,12 @@ describe('POST /api/ai/suggest', () => {
     expect((await post(app, req, ip)).status).toBe(429);
     // A spoofed left-most X-Forwarded-For doesn't dodge the limit: the right-most entry is used.
     expect((await post(app, req, { 'x-forwarded-for': '1.2.3.4, 203.0.113.9' })).status).toBe(429);
+  });
+});
+
+describe('extracting JSON from messy replies', () => {
+  it('handles code fences, preambles and stray braces in thinking text', () => {
+    const messy = 'Thinking about {mood} and "quotes {x}"...\n```json\n{"picks":[{"id":"p1","reason":"Go {now}."}]}\n```';
+    expect(parsePicks(messy, allowed)).toEqual([{ id: 'p1', reason: 'Go {now}.' }]);
   });
 });

@@ -16,6 +16,20 @@ export interface GemmaOptions {
   timeoutMs?: number;
 }
 
+/** Safe-to-log facts about a reply: no prompt or output text, ever. */
+export interface GemmaMeta {
+  finishReason?: string;
+  contentChars: number;
+  reasoningChars: number;
+  promptTokens?: number;
+  completionTokens?: number;
+}
+
+export interface GemmaResult {
+  text: string;
+  meta: GemmaMeta;
+}
+
 export class AiUnavailableError extends Error {}
 
 function config() {
@@ -29,11 +43,20 @@ export function isAiConfigured() {
   return config() !== null;
 }
 
+interface WorkersAiBody {
+  success?: boolean;
+  result?: {
+    response?: unknown;
+    choices?: { finish_reason?: string; message?: { content?: unknown; reasoning_content?: unknown; reasoning?: unknown } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+}
+
 export async function runGemma(
   messages: ChatMessage[],
-  { maxTokens = 300, temperature = 0.4, timeoutMs = 15_000 }: GemmaOptions = {},
+  { maxTokens = 1200, temperature = 0.4, timeoutMs = 20_000 }: GemmaOptions = {},
   fetchImpl: typeof fetch = fetch,
-): Promise<string> {
+): Promise<GemmaResult> {
   const cfg = config();
   if (!cfg) throw new AiUnavailableError('Workers AI is not configured');
 
@@ -42,7 +65,14 @@ export async function runGemma(
     {
       method: 'POST',
       headers: { authorization: `Bearer ${cfg.token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ messages, max_tokens: maxTokens, temperature }),
+      body: JSON.stringify({
+        messages,
+        // Gemma 4 is a reasoning model: thinking would eat the token budget for a short JSON
+        // answer, so it's switched off for these tasks.
+        chat_template_kwargs: { enable_thinking: false },
+        max_completion_tokens: maxTokens,
+        temperature,
+      }),
       signal: AbortSignal.timeout(timeoutMs),
     },
   ).catch((e: unknown) => {
@@ -50,13 +80,23 @@ export async function runGemma(
   });
 
   if (!res.ok) throw new AiUnavailableError(`Workers AI responded ${res.status}`);
-  const body = (await res.json()) as {
-    success?: boolean;
-    result?: { response?: unknown; choices?: { message?: { content?: unknown } }[] };
-  };
-  const text = body.result?.response ?? body.result?.choices?.[0]?.message?.content;
-  if (body.success === false || typeof text !== 'string') {
+  const body = (await res.json()) as WorkersAiBody;
+  const choice = body.result?.choices?.[0];
+  const raw = body.result?.response ?? choice?.message?.content;
+  const reasoning = choice?.message?.reasoning_content ?? choice?.message?.reasoning;
+  // Some models return already-parsed JSON in `response`.
+  const text = typeof raw === 'string' ? raw : raw && typeof raw === 'object' ? JSON.stringify(raw) : undefined;
+  if (body.success === false || text === undefined) {
     throw new AiUnavailableError('Workers AI returned no text');
   }
-  return text;
+  return {
+    text,
+    meta: {
+      finishReason: choice?.finish_reason,
+      contentChars: text.length,
+      reasoningChars: typeof reasoning === 'string' ? reasoning.length : 0,
+      promptTokens: body.result?.usage?.prompt_tokens,
+      completionTokens: body.result?.usage?.completion_tokens,
+    },
+  };
 }
