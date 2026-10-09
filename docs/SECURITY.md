@@ -172,7 +172,7 @@ connect-src 'self'
             https://api.open-meteo.com
             https://routing.openstreetmap.de
             https://api.pwnedpasswords.com
-            https://*.ingest.sentry.io;
+            https://*.sentry.io;
 img-src 'self' blob: data:;
 media-src 'self' blob:;
 style-src 'self';

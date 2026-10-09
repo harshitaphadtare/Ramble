@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PERSONALIZE_COLUMNS_V1, type PersonalizeRequest } from '@ramble/shared';
+import { traced } from './telemetry';
 
 /**
  * Prior Labs TabPFN REST API (https://api.priorlabs.ai, /tabpfn/* JSON routes), server-side only.
@@ -41,7 +42,13 @@ export function lovedProbabilities(prediction: unknown, classes: (number | strin
   });
 }
 
-export async function predictLoved(req: PersonalizeRequest, fetchImpl: typeof fetch = fetch, timeoutMs = 25_000): Promise<number[]> {
+export function predictLoved(req: PersonalizeRequest, fetchImpl: typeof fetch = fetch, timeoutMs = 25_000): Promise<number[]> {
+  return traced('tabpfn.predict', 'ml.predict', { 'ramble.model': MODEL, 'ramble.train_rows': req.train.length, 'ramble.test_rows': req.test.length }, () =>
+    runPredict(req, fetchImpl, timeoutMs),
+  );
+}
+
+async function runPredict(req: PersonalizeRequest, fetchImpl: typeof fetch, timeoutMs: number): Promise<number[]> {
   const key = tabPfnKey();
   if (!key) throw new TabPfnUnavailableError('TabPFN is not configured');
   const signal = AbortSignal.timeout(timeoutMs);

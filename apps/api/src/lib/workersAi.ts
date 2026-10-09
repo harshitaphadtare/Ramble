@@ -2,6 +2,8 @@
  * Gemma on Cloudflare Workers AI, called only from the server so the token stays secret
  * and Cloudflare never sees users' IP addresses. See docs/ARCHITECTURE.md §7.
  */
+import { traced } from './telemetry';
+
 export const GEMMA_MODEL = '@cf/google/gemma-4-26b-a4b-it';
 
 export interface ChatMessage {
@@ -10,6 +12,8 @@ export interface ChatMessage {
 }
 
 export interface GemmaOptions {
+  /** Names the trace span, e.g. 'suggest' or 'polish'. */
+  task?: string;
   maxTokens?: number;
   temperature?: number;
   /** Abort if Workers AI is slow; the client falls back to rule-based output. */
@@ -52,10 +56,25 @@ interface WorkersAiBody {
   };
 }
 
-export async function runGemma(
+/** One Gemma call, traced in Sentry (when on) with the model, timings, tokens and finish reason. */
+export function runGemma(messages: ChatMessage[], options: GemmaOptions = {}, fetchImpl: typeof fetch = fetch): Promise<GemmaResult> {
+  const task = options.task ?? 'chat';
+  return traced(`gemma.${task}`, 'gen_ai.chat', { 'gen_ai.system': 'cloudflare-workers-ai', 'gen_ai.request.model': GEMMA_MODEL, 'ramble.task': task }, async (set) => {
+    const result = await callGemma(messages, options, fetchImpl);
+    set({
+      'gen_ai.usage.input_tokens': result.meta.promptTokens,
+      'gen_ai.usage.output_tokens': result.meta.completionTokens,
+      'gen_ai.response.finish_reason': result.meta.finishReason,
+      'ramble.reasoning_chars': result.meta.reasoningChars,
+    });
+    return result;
+  });
+}
+
+async function callGemma(
   messages: ChatMessage[],
-  { maxTokens = 1200, temperature = 0.4, timeoutMs = 20_000 }: GemmaOptions = {},
-  fetchImpl: typeof fetch = fetch,
+  { maxTokens = 1200, temperature = 0.4, timeoutMs = 20_000 }: GemmaOptions,
+  fetchImpl: typeof fetch,
 ): Promise<GemmaResult> {
   const cfg = config();
   if (!cfg) throw new AiUnavailableError('Workers AI is not configured');

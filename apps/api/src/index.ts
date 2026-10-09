@@ -3,7 +3,10 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { createApp } from './app';
+import { initTelemetry } from './lib/telemetry';
 import { rootLogger } from './middleware/logger';
+
+initTelemetry();
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // The built PWA sits at apps/web/dist; serve it whenever it has been built (in dev, Vite serves it instead).

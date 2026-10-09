@@ -40,7 +40,7 @@ export interface PolishDeps {
 export async function polish(req: PolishRequest, { run = runGemma, onMeta, onFallback }: PolishDeps = {}): Promise<PolishResponse> {
   const unchanged: PolishResponse = { title: '', body: req.note, tags: [], source: 'none' };
   try {
-    const result = await run(buildPolishMessages(req), { maxTokens: 800, temperature: 0.5 });
+    const result = await run(buildPolishMessages(req), { task: 'polish', maxTokens: 800, temperature: 0.5 });
     onMeta?.(result.meta);
     const parsed = parsePolish(result.text);
     if (!parsed) {

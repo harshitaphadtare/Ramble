@@ -8,6 +8,7 @@ import { LevelBadge } from '../../ui/Level';
 import { Eyebrow, Sheet, Title } from '../../ui/Sheet';
 import { KIND_STYLE, gradient } from '../../ui/visuals';
 import { JournalCard } from '../journal/JournalCard';
+import { setTelemetryOptOut, telemetryAvailable, telemetryOptedOut } from '../../lib/telemetry';
 
 type View = 'places' | 'journal';
 type Filter = 'all' | 'want';
@@ -19,6 +20,26 @@ function Stat({ icon: Icon, value, label, accent }: { icon: typeof Flame; value:
       <p className="mt-1 font-display text-2xl leading-none font-semibold">{value}</p>
       <p className={`text-[11px] font-semibold ${accent ? 'text-white/85' : 'text-ink/55'}`}>{label}</p>
     </div>
+  );
+}
+
+/** Anonymous timing data (Sentry) is on by default when configured; one tap turns it off. */
+function TelemetryToggle() {
+  const [off, setOff] = useState(telemetryOptedOut);
+  if (!telemetryAvailable()) return null;
+  return (
+    <label className="mt-2 flex items-center gap-2">
+      <input
+        type="checkbox"
+        checked={!off}
+        onChange={(e) => {
+          setTelemetryOptOut(!e.target.checked);
+          setOff(!e.target.checked);
+        }}
+        className="size-4 accent-forest"
+      />
+      Share anonymous speed data (timings only, never your places or notes)
+    </label>
   );
 }
 
@@ -115,6 +136,7 @@ export function YouPanel() {
           <ShieldCheck size={14} aria-hidden="true" /> Private by design
         </p>
         Everything here is encrypted on this phone. Nothing leaves it unless you tap ✨ Polish on a note.
+        <TelemetryToggle />
         {confirmWipe ? (
           <button
             type="button"

@@ -26,7 +26,7 @@ const none = (headline: string): PlaceUpdatesResponse['summary'] => ({ headline,
 export async function summariseUpdates(placeName: string, items: PlaceUpdateItem[], run = runGemma): Promise<PlaceUpdatesResponse['summary']> {
   if (items.length === 0) return none('No recent closures, works or events found.');
   try {
-    const { text } = await run(buildSummaryMessages(placeName, items), { maxTokens: 300, temperature: 0.2 });
+    const { text } = await run(buildSummaryMessages(placeName, items), { task: 'summarise-updates', maxTokens: 300, temperature: 0.2 });
     const obj = extractJsonObject(text, (o) => typeof o.headline === 'string' && UPDATE_SEVERITIES.includes(o.severity as UpdateSeverity));
     if (!obj) return none(items[0]!.title.slice(0, 120));
     return { headline: cleanText(String(obj.headline)).slice(0, 120), severity: obj.severity as UpdateSeverity, source: 'gemma' };

@@ -73,7 +73,7 @@ export async function suggest(req: SuggestRequest, { run = runGemma, onFallback,
   let picks: Pick[];
   let meta: GemmaMeta | undefined;
   try {
-    const result = await run(buildMessages(req), { maxTokens: 1200, temperature: 0.4 });
+    const result = await run(buildMessages(req), { task: 'suggest', maxTokens: 1200, temperature: 0.4 });
     meta = result.meta;
     onMeta?.(meta);
     picks = parsePicks(result.text, allowed);

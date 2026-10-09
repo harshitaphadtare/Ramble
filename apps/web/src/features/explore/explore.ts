@@ -20,6 +20,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { fetchPlacesNear } from '../../lib/places/places';
 import { placesFromMapAround } from '../../lib/places/mapPlaces';
 import { buildRequest } from '../../lib/personalize/features';
+import { traced } from '../../lib/telemetry';
 
 export interface ExplorePrefs {
   minutes: number;
@@ -172,7 +173,11 @@ export async function explore(
     personalize = false,
   }: { map?: MapLibreMap | null; signal?: AbortSignal; user?: { places: Place[]; visits: Visit[] }; personalize?: boolean } = {},
 ) {
-  const places = await placesNear(origin, map, signal);
+  const places = await traced('explore.places', {}, async (set) => {
+    const found = await placesNear(origin, map, signal);
+    set({ 'ramble.places': found.length });
+    return found;
+  });
   const byId = new Map(places.map((p) => [p.id, p]));
   const distById = new Map(places.map((p) => [p.id, Math.round(distanceM(origin, [p.lon, p.lat]))]));
 
@@ -199,17 +204,23 @@ export async function explore(
   onResult({ cards: toCards(rulePicks(context, shortlist), byId, distById, love), source: 'rules', refining: online });
   if (!online) return;
 
-  if (personalize) ({ ranked: shortlist, love } = await personalise(shortlist, byId, user, signal));
+  if (personalize) {
+    ({ ranked: shortlist, love } = await traced('explore.tabpfn', { 'ramble.candidates': shortlist.length }, async (set) => {
+      const out = await personalise(shortlist, byId, user, signal);
+      set({ 'ramble.scored': out.love.size });
+      return out;
+    }));
+  }
 
   try {
-    const res = await fetch('/api/ai/suggest', {
+    const res = await traced('explore.gemma', { 'ramble.candidates': shortlist.length }, () => fetch('/api/ai/suggest', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ context, candidates: shortlist }),
       credentials: 'same-origin',
       // Render's free instance can take ~50 s to wake up; rule cards are already showing.
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(70_000)]) : AbortSignal.timeout(70_000),
-    });
+    }));
     if (!res.ok) throw new Error(`suggest ${res.status}`);
     const body = suggestResponseSchema.parse(await res.json());
     const cards = toCards(body.picks, byId, distById, love);

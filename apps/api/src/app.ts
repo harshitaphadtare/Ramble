@@ -5,6 +5,7 @@ import { requestId } from 'hono/request-id';
 import { SECURITY_HEADERS } from './security';
 import { logger } from './middleware/logger';
 import { err } from './lib/errors';
+import { captureError } from './lib/telemetry';
 import { aiRoutes, type AiRouteOptions } from './routes/ai';
 import { placesRoutes, type PlacesRouteOptions } from './routes/places';
 import { placeUpdatesRoutes, type PlaceUpdatesRouteOptions } from './routes/placeUpdates';
@@ -53,6 +54,7 @@ export function createApp({ staticRoot, ai, places, placeUpdates, personalize }:
   api.all('*', (c) => c.json(err('not_found', 'Not found'), 404));
   api.onError((e, c) => {
     c.get('log')?.error({ err: e }, 'unhandled');
+    captureError(e);
     return c.json(err('internal', 'Something went wrong'), 500);
   });
 

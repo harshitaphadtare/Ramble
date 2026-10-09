@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hono/node-server": "2.1.4",
+    "@sentry/node": "11.6.0",
     "hono": "4.13.13",
     "pino": "10.4.0",
     "zod": "4.6.5"

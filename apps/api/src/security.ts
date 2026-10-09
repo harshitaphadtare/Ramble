@@ -14,7 +14,8 @@ export const CONNECT_SRC = [
   'https://api.open-meteo.com',
   'https://routing.openstreetmap.de',
   'https://api.pwnedpasswords.com',
-  'https://*.ingest.sentry.io',
+  // Sentry ingest hosts look like oNNN.ingest.us.sentry.io, so match the whole sentry.io domain.
+  'https://*.sentry.io',
 ];
 
 export function contentSecurityPolicy(): string {

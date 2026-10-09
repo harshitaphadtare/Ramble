@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { PlaceUpdateItem, PlaceUpdatesQuery } from '@ramble/shared';
 import { cleanText } from './text';
+import { traced } from './telemetry';
 
 /** SerpApi Google search, server-side only (the key never reaches the browser). */
 export class SerpApiUnavailableError extends Error {}
@@ -66,7 +67,15 @@ export function toItems(raw: unknown): PlaceUpdateItem[] {
   return items;
 }
 
-export async function searchPlaceUpdates(query: PlaceUpdatesQuery, fetchImpl: typeof fetch = fetch): Promise<PlaceUpdateItem[]> {
+export function searchPlaceUpdates(query: PlaceUpdatesQuery, fetchImpl: typeof fetch = fetch): Promise<PlaceUpdateItem[]> {
+  return traced('serpapi.search', 'http.client', { 'ramble.engine': 'google' }, async (set) => {
+    const items = await runSearch(query, fetchImpl);
+    set({ 'ramble.results': items.length });
+    return items;
+  });
+}
+
+async function runSearch(query: PlaceUpdatesQuery, fetchImpl: typeof fetch): Promise<PlaceUpdateItem[]> {
   const key = serpApiKey();
   if (!key) throw new SerpApiUnavailableError('SerpApi is not configured');
   const params = new URLSearchParams({

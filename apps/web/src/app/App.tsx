@@ -14,6 +14,7 @@ import { TabBar } from './TabBar';
 import { useUiStore } from './store/uiStore';
 import { useUserStore } from './store/userStore';
 import { useFeatures } from './store/featuresStore';
+import { initTelemetry } from '../lib/telemetry';
 
 export function App() {
   const tab = useUiStore((s) => s.tab);
@@ -24,6 +25,7 @@ export function App() {
   useEffect(() => {
     void useUserStore.getState().init();
     void useFeatures.getState().load();
+    void initTelemetry();
   }, []);
 
   return (
