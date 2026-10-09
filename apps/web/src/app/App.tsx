@@ -13,15 +13,17 @@ import { TopBar } from './TopBar';
 import { TabBar } from './TabBar';
 import { useUiStore } from './store/uiStore';
 import { useUserStore } from './store/userStore';
+import { useFeatures } from './store/featuresStore';
 
 export function App() {
   const tab = useUiStore((s) => s.tab);
   const setTab = useUiStore((s) => s.setTab);
   const status = useUserStore((s) => s.status);
 
-  // Unlock the encrypted on-device store once at start-up.
+  // Unlock the encrypted on-device store and learn which optional features are on, once at start-up.
   useEffect(() => {
     void useUserStore.getState().init();
+    void useFeatures.getState().load();
   }, []);
 
   return (

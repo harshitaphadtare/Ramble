@@ -9,6 +9,7 @@ import { LevelBadge, LevelRing } from '../../ui/Level';
 import { KIND_STYLE, gradient } from '../../ui/visuals';
 import { Sheet, Title } from '../../ui/Sheet';
 import { JournalCard } from '../journal/JournalCard';
+import { PlaceUpdates } from './PlaceUpdates';
 
 const shortDate = (t: number) => new Date(t).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -104,6 +105,8 @@ function Details({ id }: { id: string }) {
           <PenLine size={19} aria-hidden="true" />
         </button>
       </div>
+
+      <PlaceUpdates place={place} />
 
       {memories.length > 0 && (
         <>

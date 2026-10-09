@@ -7,15 +7,19 @@ import { logger } from './middleware/logger';
 import { err } from './lib/errors';
 import { aiRoutes, type AiRouteOptions } from './routes/ai';
 import { placesRoutes, type PlacesRouteOptions } from './routes/places';
+import { placeUpdatesRoutes, type PlaceUpdatesRouteOptions } from './routes/placeUpdates';
+import { isAiConfigured } from './lib/workersAi';
+import { serpApiKey } from './lib/serpapi';
 
 export interface AppOptions {
   /** Directory with the built PWA. Omit to serve the API only (dev / tests). */
   staticRoot?: string;
   ai?: AiRouteOptions;
   places?: PlacesRouteOptions;
+  placeUpdates?: PlaceUpdatesRouteOptions;
 }
 
-export function createApp({ staticRoot, ai, places }: AppOptions = {}) {
+export function createApp({ staticRoot, ai, places, placeUpdates }: AppOptions = {}) {
   const app = new Hono();
 
   app.use(requestId());
@@ -37,6 +41,9 @@ export function createApp({ staticRoot, ai, places }: AppOptions = {}) {
   api.get('/health', (c) => c.json({ ok: true }));
   api.route('/ai', aiRoutes(ai));
   api.route('/places', placesRoutes(places));
+  api.route('/place-updates', placeUpdatesRoutes(placeUpdates));
+  // Which optional, key-dependent features are switched on, so the app can hide the rest.
+  api.get('/features', (c) => c.json({ ai: isAiConfigured(), placeUpdates: !!serpApiKey() }));
 
   // Catch-all must be registered last: a mounted sub-app's notFound handler is never used by the parent.
   api.all('*', (c) => c.json(err('not_found', 'Not found'), 404));
