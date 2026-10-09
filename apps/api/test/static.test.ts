@@ -11,7 +11,6 @@ describe('static app serving', () => {
   beforeAll(() => {
     root = mkdtempSync(path.join(tmpdir(), 'ramble-static-'));
     writeFileSync(path.join(root, 'index.html'), '<!doctype html><title>Ramble</title>');
-    writeFileSync(path.join(root, 'spike.html'), '<!doctype html><title>Spike</title>');
     mkdirSync(path.join(root, 'assets'));
     writeFileSync(path.join(root, 'assets', 'main-abc123.js'), 'console.log(1)');
     // serveStatic resolves roots relative to the working directory.
@@ -46,7 +45,7 @@ describe('static app serving', () => {
     expect(res.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
   });
 
-  it('keeps blob: scripts out of the main app CSP and allows them only on the test page', async () => {
+  it('serves the same strict script-src on every page', async () => {
     const scriptSrc = async (url: string) =>
       ((await app.request(url)).headers.get('content-security-policy') ?? '')
         .split(';')
@@ -54,6 +53,5 @@ describe('static app serving', () => {
         .find((d) => d.startsWith('script-src'));
     expect(await scriptSrc('/')).toBe("script-src 'self' 'wasm-unsafe-eval'");
     expect(await scriptSrc('/journal')).toBe("script-src 'self' 'wasm-unsafe-eval'");
-    expect(await scriptSrc('/spike.html')).toBe("script-src 'self' 'wasm-unsafe-eval' blob:");
   });
 });

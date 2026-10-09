@@ -1,6 +1,7 @@
 /**
  * Content Security Policy and security headers. See docs/SECURITY.md §5.1–5.2.
  * Any host added to connect-src must also be added to the client's safeFetch allow-list.
+ * AI calls (Workers AI), TabPFN, SerpApi and Atlas all go through our own API ('self').
  */
 export const CONNECT_SRC = [
   "'self'",
@@ -11,24 +12,14 @@ export const CONNECT_SRC = [
   'https://api.open-meteo.com',
   'https://routing.openstreetmap.de',
   'https://api.pwnedpasswords.com',
-  'https://huggingface.co',
-  'https://*.hf.co',
   'https://*.ingest.sentry.io',
 ];
 
-export interface CspOptions {
-  /**
-   * Transformers.js turns ONNX Runtime's loader into a blob: URL before importing it, so the
-   * 270M fallback needs blob: scripts. Only the device-test page gets this until we fix it upstream
-   * or move the fallback (docs/SECURITY.md §5.1).
-   */
-  allowBlobScripts?: boolean;
-}
-
-export function contentSecurityPolicy({ allowBlobScripts = false }: CspOptions = {}): string {
+export function contentSecurityPolicy(): string {
   return [
     "default-src 'none'",
-    `script-src 'self' 'wasm-unsafe-eval'${allowBlobScripts ? ' blob:' : ''}`,
+    // 'wasm-unsafe-eval' is only for hash-wasm (Argon2id key derivation); no inline or eval'd JS.
+    "script-src 'self' 'wasm-unsafe-eval'",
     "worker-src 'self'",
     `connect-src ${CONNECT_SRC.join(' ')}`,
     "img-src 'self' blob: data:",
@@ -45,6 +36,7 @@ export function contentSecurityPolicy({ allowBlobScripts = false }: CspOptions =
 }
 
 export const SECURITY_HEADERS: Record<string, string> = {
+  'Content-Security-Policy': contentSecurityPolicy(),
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',

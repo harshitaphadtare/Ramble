@@ -11,10 +11,10 @@ declare const self: ServiceWorkerGlobalScope;
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 
-// Single-page app: every navigation gets the cached shell, except the API and the test page.
+// Single-page app: every navigation gets the cached shell, except the API.
 registerRoute(
   new NavigationRoute(createHandlerBoundToURL('/index.html'), {
-    denylist: [/^\/api\//, /^\/spike/],
+    denylist: [/^\/api\//],
   }),
 );
 
@@ -34,12 +34,6 @@ registerRoute(
     cacheName: 'map-tiles',
     plugins: [okOnly, new ExpirationPlugin({ maxEntries: 5000, maxAgeSeconds: 60 * 60 * 24 * 30 })],
   }),
-);
-
-// Self-hosted AI runtimes: cached the first time they're used.
-registerRoute(
-  ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/wasm/'),
-  new CacheFirst({ cacheName: 'ai-runtime', plugins: [okOnly] }),
 );
 
 // The API is never cached by the service worker.

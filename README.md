@@ -2,7 +2,9 @@
 
 **Your personal explore map. Works with zero bars.**
 
-Ramble remembers the places you love, levels them up each time you return, nudges you outside, and turns your walks into a private journal. The AI, **Gemma**, runs **on your phone**, so it works on a trail with no signal. When you're online, Ramble gets smarter, and if you create an account it syncs across your devices, **end-to-end encrypted**.
+Ramble remembers the places you love, levels them up each time you return, nudges you outside, and turns your walks into a private journal. There's **nothing to install**: it opens like a website and keeps working on a trail with no signal. When you're online, open-weight **Gemma** picks your next walk and polishes journal entries on request, and if you create an account Ramble syncs across your devices, **end-to-end encrypted**.
+
+**Live:** https://ramble-gw4t.onrender.com
 
 Built for the [DEV Hacktoberfest Open-Source AI Challenge, Week 1 ("Touch Grass")](https://dev.to/challenges/hacktoberfest-week1-2026-10-05).
 
@@ -15,8 +17,8 @@ Built for the [DEV Hacktoberfest Open-Source AI Challenge, Week 1 ("Touch Grass"
 
 ## Repo layout
 ```
-apps/web        the PWA (React, Vite, MapLibre, on-device Gemma)
-apps/api        the backend (Hono on Node), which also serves the built PWA
+apps/web        the PWA (React, Vite, MapLibre)
+apps/api        the backend (Hono on Node): serves the PWA, calls Gemma on Workers AI
 packages/shared Zod schemas shared by both
 docs/           architecture, security, plan
 ```
@@ -36,8 +38,6 @@ Production-like (strict CSP and headers, like on Render):
 npm run build && npm start      # http://localhost:8787
 ```
 
-**Gemma device test:** open `/spike.html` on the device you want to check. It reports WebGPU support, downloads the model (one-time, hash-verified), and measures speed.
-
 ## Tests
 ```bash
 npm test
@@ -45,7 +45,7 @@ npm run typecheck
 ```
 
 ## Credits
-Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors · tiles by [OpenFreeMap](https://openfreemap.org) · [MapLibre](https://maplibre.org) · [Gemma](https://ai.google.dev/gemma) via [LiteRT-LM](https://ai.google.dev/edge/litert-lm) and [Transformers.js](https://huggingface.co/docs/transformers.js).
+Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors · tiles by [OpenFreeMap](https://openfreemap.org) · [MapLibre](https://maplibre.org) · [Gemma](https://ai.google.dev/gemma) on [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/).
 
 ## Licence
 [MIT](LICENSE)

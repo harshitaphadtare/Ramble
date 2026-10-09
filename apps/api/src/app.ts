@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { requestId } from 'hono/request-id';
-import { SECURITY_HEADERS, contentSecurityPolicy } from './security';
+import { SECURITY_HEADERS } from './security';
 import { logger } from './middleware/logger';
 
 export interface AppOptions {
@@ -19,9 +19,7 @@ export function createApp({ staticRoot }: AppOptions = {}) {
   // Security headers on every response, static files included.
   app.use(async (c, next) => {
     await next();
-    for (const [k, v] of Object.entries(SECURITY_HEADERS)) c.header(k, v);
-    c.header('Content-Security-Policy', contentSecurityPolicy({ allowBlobScripts: c.req.path === '/spike.html' }));
-  });
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) c.header(k, v);  });
 
   const api = new Hono();
   api.use(bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json(err('too_large', 'Request too large'), 413) }));

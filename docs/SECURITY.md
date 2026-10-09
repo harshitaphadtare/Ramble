@@ -45,7 +45,7 @@
 | Principle | How Ramble applies it |
 |---|---|
 | **Zero-knowledge / end-to-end encryption** | Records and media are encrypted on the device before sync. Keys are derived on the device. The server holds only wrapped (encrypted) keys and ciphertext. |
-| **Data minimisation** | Accounts are optional. Only an email is collected. Kind, timestamps and deleted flags are hidden inside the ciphertext. EXIF is stripped from photos. Voice recordings are discarded by default. TabPFN gets anonymous numbers only. SerpApi gets public names only. |
+| **Data minimisation** | Accounts are optional. Only an email is collected. Kind, timestamps and deleted flags are hidden inside the ciphertext. EXIF is stripped from photos. No audio is recorded. Journal text reaches the AI only on an explicit ✨ Polish tap. TabPFN gets anonymous numbers only. SerpApi gets public names only. |
 | **Defence in depth** | XSS: CSP + React escaping + lint + Trusted Types. Data at rest: OS encryption + app encryption + passcode. Server: auth + per-user query scoping + rate limits + network allow-list. |
 | **Least privilege** | The AI has no tools. The database user is limited to one database. Atlas accepts connections only from Render's IPs. Browser permissions are requested only when needed. CI tokens are read-only. Partner keys live only on the server. |
 | **Secure by default** | Encryption is always on. Telemetry contains no content. Personalisation is opt-in. Location is used only in the foreground. Cookies are `HttpOnly; Secure; SameSite`. |
@@ -70,10 +70,10 @@
 | Recovery key | 🔴 Critical | Kept by the user. Only a DK wrapped with it is stored on the server |
 | Email address | 🟠 High (identifying) | Better Auth `user` collection |
 | Session cookies | 🔴 Critical (account takeover) | Browser cookie jar (`HttpOnly`) |
-| Server secrets (Mongo URI, Better Auth secret, TabPFN, SerpApi, Resend keys) | 🔴 Critical | Render environment variables only |
+| Server secrets (Mongo URI, Better Auth secret, Cloudflare AI token, TabPFN, SerpApi, Resend keys) | 🔴 Critical | Render environment variables only |
+| AI prompts and outputs | 🟠 High when a journal note is polished; 🟢 low for suggestions (public names) | In transit only (device → our server → Cloudflare). Not logged by us; not stored or trained on by Cloudflare per its docs |
 | TabPFN feature rows | 🟡 Medium (anonymous behaviour patterns) | In transit only; cached scores on the device are encrypted |
 | Downloaded area bboxes | 🟡 Medium | Device, rounded to about 5 km |
-| Model weights | 🔴 **High integrity** | Device OPFS, hash-verified |
 | App code as delivered | 🔴 **High integrity** | Render; service worker cache |
 
 ---
@@ -88,9 +88,9 @@
 | A2 | **Someone with your locked phone, or a copy of the browser's storage** | Reads the files on disk | ✅ Encryption at rest |
 | A3 | **XSS / injected script** | Runs JavaScript in our origin | ✅ CSP, no HTML sinks, Trusted Types |
 | A4 | **Malicious data**: OSM names, web snippets, share links, backups, prompt injection | Supplies input | ✅ Validation, plain-text rendering, a model with no capabilities |
-| A5 | **Network attacker** (public Wi-Fi, a malicious hotspot) | Reads or modifies traffic | ✅ TLS everywhere, HSTS preload, pinned model hash |
-| A6 | **Supply chain**: npm, CDN, model host | Ships malicious code or weights | ✅ Lockfile, audits, self-hosting, pinned hashes |
-| A7 | **Curious third-party service** (map, routing, TabPFN, SerpApi, Resend) | Sees requests | ✅ Rounding, anonymisation, proxying, minimisation |
+| A5 | **Network attacker** (public Wi-Fi, a malicious hotspot) | Reads or modifies traffic | ✅ TLS everywhere, HSTS preload |
+| A6 | **Supply chain**: npm packages, CDNs | Ships malicious code | ✅ Lockfile, audits, no runtime CDNs, minimal dependencies |
+| A7 | **Curious third-party service** (map, routing, Cloudflare AI, TabPFN, SerpApi, Resend) | Sees requests | ✅ Rounding, anonymisation, proxying, minimisation; journal text only on explicit ✨ Polish |
 | A8 | **Share-link recipient** | Sees shared content | ✅ Field allow-list + preview |
 | A9 | **Database breach** (stolen Atlas credentials or backup) | Reads or modifies all collections | ✅ Ciphertext only; double-hashed auth keys; AEAD detects tampering |
 | A10 | **Online attacker against accounts** (credential stuffing, brute force, enumeration, CSRF, session theft) | Calls the API | ✅ Rate limits, breached-password check, generic errors, `SameSite` cookies, origin checks |
@@ -104,22 +104,23 @@
 flowchart LR
     subgraph Device[TRUSTED: the user's device + Ramble origin]
         UI[UI] --- DB[(Encrypted IndexedDB)]
-        UI --- AI[Gemma worker<br/>no network, no tools]
         KEYS[Keys in memory]
     end
     subgraph Server[SEMI-TRUSTED: Ramble API]
         API[Hono + Better Auth] --- MDB[(Atlas: ciphertext)]
+        AIS[Gemma service<br/>fixed prompts, output validation]
     end
     subgraph Ext[UNTRUSTED]
-        OSM[OSM / Photon] 
+        OSM[OSM / Photon]
         WEB[SerpApi web snippets]
         TAB[TabPFN]
         LINK[Share links / backups / photos]
-        MODEL[Model output]
+        CF[Cloudflare Workers AI<br/>Gemma output]
     end
-    Device -- "ciphertext, anonymous rows, public names" --> Server
+    Device -- "ciphertext, anonymous rows, public names,<br/>a note only on ✨ Polish" --> Server
     Server -- "validated JSON" --> Device
-    OSM & WEB & LINK & MODEL -->|validate + size cap + plain text| UI
+    AIS <-->|prompt / untrusted output| CF
+    OSM & WEB & LINK -->|validate + size cap + plain text| UI
 ```
 
 The server is **semi-trusted**: it's trusted to deliver the app's code and to be available, but **never with plaintext data**.
@@ -133,7 +134,7 @@ The server is **semi-trusted**: it's trusted to deliver the app's code and to be
 | **S**poofing | A phishing clone of Ramble | HSTS preload, origin-bound storage; [L] passkeys, which can't be phished | P1 / L |
 | **T**ampering | A database attacker swaps or alters ciphertext | AES-GCM + AAD (`id:v`): any change fails decryption, and the device flags it and keeps its local copy | P3 |
 | **T**ampering | Replaying an old record version to roll back data | Device-side last-write-wins on the encrypted inner `updatedAt`: an older replayed version loses to the newer local copy | P3 |
-| **T**ampering | Malicious model weights | Pinned revision + streaming SHA-256 check | P1 |
+| **T**ampering | Malicious or manipulated AI output | Treated as untrusted: server-side Zod validation, id allow-list, length caps, plain-text rendering | P1 |
 | **T**ampering | CSRF on the API | `SameSite=Lax` cookies + Better Auth origin checks + JSON-only bodies (`Content-Type` enforced) | P3 |
 | **R**epudiation | "I didn't delete my account" | Fresh session + password required, typed confirmation, email notice | P3 |
 | **I**nformation disclosure | **Full database dump** | Content is ciphertext; kind, timestamps and tombstones are hidden; the email and double-hashed auth key are the only plaintext. Brute force means Argon2id(64 MiB) + scrypt per guess, per user. | P3 |
@@ -141,11 +142,12 @@ The server is **semi-trusted**: it's trusted to deliver the app's code and to be
 | **I**nformation disclosure | Account enumeration | Same response and timing for "email exists" and "doesn't exist" on sign-up, sign-in and reset | P3 |
 | **I**nformation disclosure | TabPFN rows reveal identity | No ids, names or coordinates; coarse buckets; proxied (no IP); opt-in; unit test enforces it | P2 |
 | **I**nformation disclosure | SerpApi query reveals a private place | Only public OSM names are looked up, never custom pins; proxied; shared cache | P2 |
+| **I**nformation disclosure | AI prompts reveal private data | Suggestions carry public names only (custom pins are sent as "your saved spot"); journal text only on explicit ✨ Polish; proxied (no user IP or id); a provider that doesn't train on or store prompts; we don't log prompts | P1 |
 | **I**nformation disclosure | Logs leak secrets or data | pino redaction; no bodies, cookies or auth headers logged; Sentry scrubbers | P1–P3 |
 | **I**nformation disclosure | Photo EXIF reveals home | Re-encoded on import, which strips EXIF | P1 |
 | **I**nformation disclosure | XSS reads decrypted data | Strict CSP (`connect-src` allow-list blocks exfiltration), no HTML sinks, Trusted Types | P1 |
 | **D**enial of service | Brute force or flooding | Per-IP and per-session rate limits, body size limits, Render's platform protection | P1–P3 |
-| **D**enial of service | Draining the SerpApi or TabPFN quota | Session required, per-session limits, a global daily budget, a shared cache, user-initiated lookups only | P2 |
+| **D**enial of service | Draining the Gemma, SerpApi or TabPFN quota | Session required, per-session limits, a global daily budget, a shared cache, user-initiated lookups only; prompts are built on the server, so the endpoint can't be used as a general chatbot | P1–P2 |
 | **D**enial of service | Filling Atlas storage | Per-user quotas (records count and size, media 50 MB) | P3 |
 | **D**enial of service | Huge inputs on the device (links, backups, photos) | Size caps; decoding in workers | P1 |
 | **E**levation of privilege | Prompt injection via OSM or web snippets | The model has no tools or actions; outputs are schema-checked, id-allow-listed and rendered as plain text | P1–P2 |
@@ -170,7 +172,6 @@ connect-src 'self'
             https://api.open-meteo.com
             https://routing.openstreetmap.de
             https://api.pwnedpasswords.com
-            https://huggingface.co https://*.hf.co
             https://*.ingest.sentry.io;
 img-src 'self' blob: data:;
 media-src 'self' blob:;
@@ -183,11 +184,10 @@ form-action 'self';
 frame-ancestors 'none';
 upgrade-insecure-requests;
 ```
-- **No `'unsafe-inline'` or `'unsafe-eval'` for scripts.** `'wasm-unsafe-eval'` is the minimum the model runtimes need.
-- **The `connect-src` allow-list blocks data theft.** Even injected code couldn't send data anywhere else. TabPFN, SerpApi, Atlas and Resend **aren't listed**, because the browser never talks to them directly; all of that goes through `'self'`.
-- **MapLibre's CSP build** with a self-hosted worker means no `blob:` workers are needed.
+- **No `'unsafe-inline'` or `'unsafe-eval'` for scripts.** `'wasm-unsafe-eval'` is only for hash-wasm's Argon2id (key derivation).
+- **The `connect-src` allow-list blocks data theft.** Even injected code couldn't send data anywhere else. Cloudflare AI, TabPFN, SerpApi, Atlas and Resend **aren't listed**, because the browser never talks to them directly; all of that goes through `'self'`.
+- **MapLibre's worker is served from our own origin** (`setWorkerUrl`), so no `blob:` workers are needed. Verified in production: the map renders with zero CSP violations.
 - `style-src 'self'`. If a library injects a `<style>` tag, we add its hash, never `'unsafe-inline'`.
-- To verify in the spike: which hosts Hugging Face redirects downloads to, and whether the runtimes need `blob:` workers (if so, self-host the worker files).
 - **Trusted Types:** `require-trusted-types-for 'script'` once tested.
 - PR previews run a **report-only** copy first.
 
@@ -231,14 +231,20 @@ flowchart TD
 - Model output, OSM names and web snippets are plain text with length caps; control characters and bidi-override characters are stripped.
 
 ### 5.5 AI safety [P1–P2]
-- **The model has no agency.** No tools, no network (the worker has no fetch; CSP enforces it), no storage writes.
+- **The model has no agency.** It has no tools and no actions. It returns text to our server, and nothing else happens.
+- **Prompts are built on the server** from fixed templates. The device sends structured fields (Zod-validated, size-capped), never free-form prompts, so our endpoint can't be abused as a general chatbot.
 - **Prompt injection** via OSM names, notes or **SerpApi snippets** is contained. Output must pass a Zod schema, use only allow-listed ids, respect length caps, and is rendered as plain text. The worst a successful injection can do is produce a wrong one-line reason or summary.
 - Trail-update summaries always carry "From the web, may be out of date. Check official sources."
 - Sightings are labelled as guesses. No safety-critical advice.
-- Output token caps, timeouts, cancellation.
+- Output token caps, a 15 s timeout, and rule-based fallbacks.
 
-### 5.6 Model integrity [P1]
-Pinned Hugging Face revision → **streaming SHA-256** check (hash-wasm) → on a mismatch the file is deleted and the model refused. The licence and source are shown in Settings. [L] Self-host the weights.
+### 5.6 AI provider privacy [P1]
+- **Provider:** Cloudflare Workers AI, running Gemma 4 26B (open-weight, Apache-2.0). Cloudflare's docs state customer content (prompts, outputs) is **not used to train models or improve services** and is **not stored** unless we attach a storage product (we don't).
+- **What's sent:** see ARCHITECTURE.md §7.4. Suggestions carry public names only; journal text only on an explicit ✨ Polish tap, with a first-time explainer.
+- **Proxied:** Cloudflare sees our server's IP, never the user's, and no user identifiers.
+- **Not logged:** our server never logs prompts or outputs. Sentry records only token counts and timings.
+- **The token** is scoped to Workers AI only and lives in Render's environment variables.
+- **Why not Google's free Gemini API tier?** Its terms allow using free-tier content to improve Google's products, with possible human review. That's not acceptable for journal notes.
 
 ### 5.7 Media [P1]
 - **Photos:**
@@ -246,10 +252,7 @@ Pinned Hugging Face revision → **streaming SHA-256** check (hash-wasm) → on 
   - Input is capped at 25 MB and 12,000 px per side.
   - `createImageBitmap` → `OffscreenCanvas` → WebP **strips all EXIF and GPS data**. The original file is never stored, and a unit test asserts there's no EXIF in the output.
   - Photos are stored as encrypted blobs. Object URLs are revoked when no longer shown.
-- **Voice:**
-  - The microphone is requested only when the user taps record, with a visible recording indicator.
-  - **The recording is discarded after drafting by default.** Keeping it is opt-in, and it's stored encrypted.
-  - Voice is never uploaded except as encrypted media, if the user keeps it and syncs.
+- **Voice:** Ramble doesn't record audio. Users dictate with the phone keyboard's built-in microphone, which turns speech into text in the note field. No audio file is created, stored or uploaded by Ramble.
 
 ### 5.8 Location privacy [P1]
 - **Ask with context:** location is requested only after an explanation.
@@ -379,10 +382,10 @@ TLS (Render) → security headers → body size limit (256 KB JSON, 2 MB media)
 | **SerpApi** | Public OSM place name + suburb | Our server; results shared across users via the cache | Only on explicit open or plan; never for custom pins; can be turned off |
 | **MongoDB Atlas** | Ciphertext, wrapped keys, email, double-hashed auth key | Our server | Only if you create an account |
 | **Resend** | Email address + the verification or reset link | Our server | Only with an account |
+| **Cloudflare Workers AI** (Gemma) | Suggestion prompts (public place names, distances, time, mood, weather); trail-update snippets; a journal note + optional photo **only on ✨ Polish** | Our server; no user IP or id | Polish is always a deliberate tap; AI suggestions can be turned off in Settings (rules only) |
 | **Sentry** | Scrubbed timings and errors | Device + server | Opt-out toggle |
 | **ElevenLabs** | **Nothing from users.** Used only to narrate the demo video | – | – |
 | OpenFreeMap / Overpass / Photon / Open-Meteo / OSRM | Tiles viewed, rounded areas, search text, route endpoints | Device | Disclosed on the privacy screen |
-| Hugging Face | One-time model download | Device | – |
 
 Partner terms (Prior Labs, SerpApi) are reviewed before launch, and partner data retention is noted on the privacy screen [L].
 
@@ -402,6 +405,7 @@ We're honest about these.
 | **Server withholding records** | It can't forge data, but it could hide some | Local-first: devices keep full copies; [L] signed sync manifests |
 | **Third parties see coarse areas, route endpoints, public names** | Online features need some data | Rounding, proxying, minimisation, disclosure, opt-outs |
 | **Partner services' own retention** | Outside our control | Anonymous or public data only |
+| **Trusting the AI provider with polished notes** | A note sent with ✨ Polish is processed by Cloudflare. We rely on its stated no-training, no-storage policy (no formal zero-retention guarantee is advertised) | Polish is opt-in per note; first-time explainer; only the note and place name are sent, no identity; the model is open-weight, so we can move to a self-hosted Gemma later [L] |
 | **A forgotten password and no recovery key** | Zero-knowledge design | Clear warning, recovery-key confirmation, signed-in devices can re-wrap |
 | **Storage eviction** | Browsers can evict data | `storage.persist()`, install prompt, sync, encrypted backups |
 | **Model hallucination** | Small models make mistakes | Real places only, id allow-list, "guess" labels, user edits drafts, nothing safety-critical |
@@ -419,7 +423,7 @@ We're honest about these.
 | **Delete one item** | Encrypted tombstone; media deleted | Tombstone ciphertext stored; media blob deleted |
 | **Lock** | DK dropped, store cleared, object URLs revoked | – |
 | **Sign out** | Push pending changes (with a time limit) → clear the session; data stays on the device unless the user picks "Sign out and remove data from this device" | Session revoked |
-| **Delete all data (device)** | **Crypto-shred** (delete the wrapped DKs) → clear IndexedDB, OPFS, caches, unregister the service worker | – |
+| **Delete all data (device)** | **Crypto-shred** (delete the wrapped DKs) → clear IndexedDB, caches, unregister the service worker | – |
 | **Delete account** | Same as above | In one transaction: records, GridFS media, vault, counters, sessions, accounts, user → confirmation email |
 | **Retention** | Until the user deletes | Until account deletion; inactive accounts [L] warned after 2 years |
 
@@ -432,7 +436,7 @@ Written in plain language on the in-app **Privacy** screen and in the README:
 1. **Your places, walks, photos and journal are encrypted on your phone.** If you sync, our server only ever stores scrambled data. **We can't read it, even if we wanted to.**
 2. **No account needed.** If you create one, we keep only your email.
 3. **No ads. No trackers. No selling data.** Ever.
-4. **The AI runs on your phone.** Your notes, photos and voice are never sent anywhere to be processed.
+4. **The AI only sees what it needs.** Suggestions use public place names. Your journal notes go to the AI **only when you tap ✨ Polish**, through our server, to a provider that doesn't store them or train on them. Nothing to download, ever.
 5. **Smarter suggestions are opt-in** and send anonymous numbers only, never places. You can see exactly what's sent.
 6. **Trail updates** look up public park names only, never your own pins.
 7. **Photos are cleaned** of hidden location data.
@@ -448,7 +452,7 @@ Written in plain language on the in-app **Privacy** screen and in the README:
 | Type safety | TypeScript `strict`, `noUncheckedIndexedAccess`, shared Zod schemas |
 | Lint gates | `no-unsanitized`, `react/no-danger`, `security/*`, no `eval`, no `any` in crypto or auth code |
 | Dependencies | Minimal (each new one is justified in its PR); `npm ci`; `npm audit --audit-level=high` fails CI; `npm audit signatures`; Dependabot weekly; `.npmrc ignore-scripts=true` with exceptions only where needed |
-| No runtime CDNs | All JS, WASM and fonts are self-hosted |
+| No runtime CDNs | All JS and fonts are served from our own origin |
 | Static analysis | CodeQL on every PR |
 | Secrets | gitleaks + GitHub push protection; `.env*` gitignored |
 | Security tests | Crypto tamper tests; auth key ≠ encryption key; **cross-user isolation**; NoSQL injection payloads; rate-limit tests; TabPFN rows contain no names or coordinates; EXIF stripping; CSP and headers checked on the preview URL |
@@ -476,14 +480,15 @@ Written in plain language on the in-app **Privacy** screen and in the README:
 
 ### P1: Core (offline app)
 - [ ] Hono serves the app with the CSP and all headers in §5.1–5.2; checked on the preview URL
-- [ ] MapLibre CSP build; self-hosted runtime WASM and workers
+- [x] MapLibre worker served from our own origin (no `blob:` workers); verified on Render
+- [ ] Gemma via the server only: fixed prompt templates, Zod-validated output, id allow-list, token caps, timeouts, rule fallback; prompts and outputs never logged
+- [ ] Cloudflare token scoped to Workers AI only; per-session and global daily AI budgets
 - [ ] Envelope encryption (AES-GCM-256, random IV, AAD) for every record and media blob
 - [ ] Device-key wrapping; DK non-extractable in memory; repository layer is the only path to the database
-- [ ] Photo re-encoding (EXIF stripped), file-type check, size caps; voice discarded by default
+- [ ] Photo re-encoding (EXIF stripped), file-type check, size caps
 - [ ] `safeFetch`: allow-list, timeouts, rounding, `credentials` rules
 - [ ] Zod schemas for model output and OSM data; id allow-list for AI picks
 - [ ] Lint bans on HTML sinks
-- [ ] Model revision pinned + SHA-256 check
 - [ ] Sentry: metrics only, scrubbers, opt-out
 - [ ] "Delete all data" with crypto-shredding; privacy screen
 - [ ] 2FA on all accounts; branch protection; secret scanning; private vulnerability reporting

@@ -2,7 +2,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { resolve } from 'node:path';
 
 export default defineConfig({
   plugins: [
@@ -31,9 +30,7 @@ export default defineConfig({
         ],
       },
       injectManifest: {
-        // AI runtimes (20–35 MB each) and the test page are cached on demand, not precached.
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,webmanifest}'],
-        globIgnores: ['wasm/**', 'spike.html', 'assets/spike-*', 'assets/transformers*', 'assets/*.wasm'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       devOptions: { enabled: false },
@@ -49,10 +46,6 @@ export default defineConfig({
           if (id.includes('node_modules/maplibre-gl')) return 'maplibre';
           if (id.includes('node_modules/react')) return 'react';
         },
-      },
-      input: {
-        main: resolve(import.meta.dirname, 'index.html'),
-        spike: resolve(import.meta.dirname, 'spike.html'),
       },
     },
   },

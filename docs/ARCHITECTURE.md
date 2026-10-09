@@ -1,7 +1,7 @@
 # Ramble: System Design & Architecture
 
 > Ramble is an **offline-first, online-enhanced** personal explore map. It remembers the places you love, levels them up each time you return, nudges you outside, and turns your walks into a private journal.
-> The core AI (**Gemma**, an open-weight model) runs **on your phone**, so the core features work with zero bars. When you're online, Ramble gets smarter: personalised predictions (**TabPFN**), fresh trail and park updates (**SerpApi**), and an optional account with **end-to-end-encrypted** backup and sync (**MongoDB Atlas**).
+> **Nothing to download:** it opens like any website. The map, your places, check-ins, walks and journal work with zero bars. When you're online, the AI joins in: **Gemma** (open-weight, hosted on Cloudflare Workers AI and called through our server) picks walks and polishes journal entries, **TabPFN** predicts places you'll love, **SerpApi** checks for trail closures, and an optional account gives you **end-to-end-encrypted** backup and sync (**MongoDB Atlas**).
 >
 > Companion docs: [SECURITY.md](SECURITY.md) (threat model and security design) · [hacktoberfest-guide.md](hacktoberfest-guide.md) (challenge plan, prizes, timeline)
 
@@ -20,7 +20,7 @@
 4. [Tech stack](#4-tech-stack)
 5. [Project structure](#5-project-structure)
 6. [Data model](#6-data-model)
-7. [On-device AI pipeline (Gemma)](#7-on-device-ai-pipeline-gemma)
+7. [AI pipeline (Gemma on Workers AI)](#7-ai-pipeline-gemma-on-workers-ai)
 8. [Personalisation (TabPFN)](#8-personalisation-tabpfn)
 9. [Trail and park updates (SerpApi)](#9-trail-and-park-updates-serpapi)
 10. [Accounts and end-to-end-encrypted sync (MongoDB Atlas)](#10-accounts-and-end-to-end-encrypted-sync-mongodb-atlas)
@@ -41,16 +41,18 @@
 
 | # | Principle | What it means in practice |
 |---|---|---|
-| 1 | **Offline-first** | The phone's database is the source of truth. Map, places, check-ins, walks, journal and Gemma all work with no signal. |
-| 2 | **Online-enhanced** | Online features add value but **never block** anything. Offline, they show the last saved result or hide themselves. |
-| 3 | **Zero-knowledge server** | The server stores only **ciphertext** it can't read. Your places, visits, photos and journal are encrypted on the phone before they're synced. |
-| 4 | **Account optional** | Use Ramble instantly. Sign up only to back up and sync across devices. |
-| 5 | **Private by design** | Third parties receive only what a feature needs, coarsened or anonymised, always through our backend, never with identifiers. |
-| 6 | **Secure by default** | Encryption is always on, strict CSP, every input treated as untrusted. See SECURITY.md. |
-| 7 | **AI that can't make up places** | Gemma ranks and describes real places the app supplies. TabPFN only scores them. Neither can invent places or take actions. |
-| 8 | **Fast on a mid-range phone** | Strict performance budgets. The model runs in a worker. The app shell is served from the service worker cache. |
-| 9 | **Graceful degradation** | If WebGPU, the model, the network or the backend is missing, the app still works, just more simply. |
-| 10 | **One origin, small surface** | The app and the API are served from the **same origin**, so there's no CORS and no third-party cookies. Few dependencies. |
+| 1 | **Nothing to download** | Ramble opens like a normal website. No app store, no model download, no setup before it's useful. |
+| 2 | **Offline-first** | The phone's database is the source of truth. Map, places, check-ins, walks and journal all work with no signal. |
+| 3 | **Online-enhanced** | Online features (Gemma, TabPFN, trail updates, sync) add value but **never block** anything. Offline, they show the last saved result, fall back to rules, or wait politely. |
+| 4 | **Zero-knowledge server** | The server stores only **ciphertext** it can't read. Your places, visits, photos and journal are encrypted on the phone before they're synced. |
+| 5 | **Account optional** | Use Ramble instantly. Sign up only to back up and sync across devices. |
+| 6 | **Private by design** | Third parties receive only what a feature needs, coarsened or anonymised, always through our backend, never with identifiers. |
+| 7 | **Private notes reach the AI only on request** | Suggestions send only public place names and context. A journal note goes to Gemma **only when the user taps ✨ Polish**, and the provider doesn't train on it. |
+| 8 | **Secure by default** | Encryption is always on, strict CSP, every input treated as untrusted. See SECURITY.md. |
+| 9 | **AI that can't make up places** | Gemma ranks and describes real places the app supplies. TabPFN only scores them. Neither can invent places or take actions. |
+| 10 | **Fast on a mid-range phone** | Strict performance budgets. The app shell is served from the service worker cache. AI results arrive after the cards and never block the UI. |
+| 11 | **Graceful degradation** | If the network, the AI provider or the backend is missing, the app still works, just more simply (rule-based suggestions, journal saved as typed). |
+| 12 | **One origin, small surface** | The app and the API are served from the **same origin**, so there's no CORS and no third-party cookies. Few dependencies. |
 
 ---
 
@@ -71,13 +73,13 @@ flowchart LR
     API -- anonymous numeric rows --> TAB[Prior Labs<br/>TabPFN API]
     API -- public place name --> SERP[SerpApi]
     API -- auth emails --> MAIL[Resend<br/>email]
+    API -- prompts: public place names + context,<br/>or a note the user chose to polish --> CF[Cloudflare Workers AI<br/>Gemma 4 26B]
 
     PWA -- map tiles --> OFM[OpenFreeMap]
     PWA -- outdoor places, rounded bbox --> OVP[Overpass / OSM]
     PWA -- search --> PH[Photon]
     PWA -- forecast, rounded --> OM[Open-Meteo]
     PWA -- walking route --> RT[OSRM routing]
-    PWA -- model weights, once --> HF[Hugging Face]
     PWA -. metrics only .-> SE[Sentry]
     API -. metrics only .-> SE
 ```
@@ -91,12 +93,12 @@ flowchart LR
 | **Prior Labs (TabPFN)** | Numeric rows such as `[kind=3, distBucket=2, hourBucket=4, …]` with labels | Names, coordinates, ids, the user's identity or IP (proxied) |
 | **SerpApi** | A public place name + suburb (e.g. "Merri Creek Trail, Northcote") | Who asked (proxied, results shared across users), coordinates |
 | **Resend** | The email address, for verification and password-reset emails only | Anything else |
+| **Cloudflare Workers AI** | Suggestion prompts (public place names, distances, time, mood, weather); trail-update snippets; a journal note **only when the user taps ✨ Polish** | Coordinates, user identity or IP (proxied), anything automatically from the journal. Cloudflare's docs state prompts and outputs aren't used for training or stored |
 | OpenFreeMap | The map tiles you view | Your data |
 | Overpass | A **rounded** bounding box of about 5 km | Your exact location, your history |
 | Photon | Search text + a rounded bias point | Your history |
 | Open-Meteo | Lat/lon at 2 decimals (~1 km) | Anything else |
 | Routing | The start and end of a route you request | Your history |
-| Hugging Face | One-time model download | Anything else |
 | Sentry | Timings and errors, content scrubbed | Coordinates, notes, prompts, outputs, emails |
 
 ---
@@ -112,23 +114,22 @@ flowchart TB
         Store[Zustand store<br/>decrypted in-memory view]
         Repo[Repository<br/>encrypt / decrypt / validate]
         Sync[Sync engine<br/>push / pull / merge]
-        Online[Online services client<br/>TabPFN, trail updates, auth]
+        Online[Online services client<br/>Gemma, TabPFN, trail updates, auth]
+        Rules[Rule-based fallback<br/>suggestions offline]
         Map[MapLibre GL]
     end
     subgraph Workers[Background threads]
-        AIW[AI worker: Gemma]
         SW[Service worker: Workbox]
     end
     subgraph Storage[On-device storage]
         IDB[(IndexedDB: encrypted records)]
         Cache[(Cache API: shell, tiles)]
-        OPFS[(OPFS: model weights)]
     end
     UI <--> Store <--> Repo <--> IDB
     Repo <--> Sync --> APIc[/api/sync]
     UI --> Online --> APIo[/api/*]
+    Online -. offline / AI unavailable .-> Rules
     UI <--> Map --> SW <--> Cache
-    UI <-- Comlink --> AIW --> OPFS
 ```
 
 ### 3.2 Server (Render web service)
@@ -141,10 +142,12 @@ flowchart TB
     R -- /api/auth/* --> BA[Better Auth<br/>email+password, anonymous sessions]
     R -- /api/sync/* --> SY[Sync service<br/>ciphertext store]
     R -- /api/vault --> VA[Vault service<br/>wrapped keys]
+    R -- /api/ai/* --> AI[Gemma service<br/>prompts, validation, fallbacks]
     R -- /api/personalize --> TP[TabPFN proxy]
     R -- /api/place-updates --> SP[SerpApi proxy + 24 h shared cache]
     R -- everything else --> ST[Static app files]
     BA & SY & VA & SP --> DB[(MongoDB Atlas)]
+    AI --> CF[Cloudflare Workers AI<br/>Gemma 4 26B]
     TP --> PL[Prior Labs API]
     SP --> SA[SerpApi]
 ```
@@ -159,7 +162,7 @@ flowchart TB
 | **Crypto** | Keys, AES-GCM, wrapping, Argon2id | Pure functions on WebCrypto + hash-wasm |
 | **Sync engine** | Push and pull ciphertext, client-side last-write-wins merge | Never sees plaintext outside the repository |
 | **Online client** | Typed calls to `/api/*`, timeouts, results saved for offline use | Every call has an offline fallback |
-| **AI client / worker** | Gemma load, inference, validation, fallbacks | The worker has no network or DOM access |
+| **AI client** | Calls `/api/ai/*`, shows results as they arrive, falls back to rules when offline or on error | Never sends journal text unless the user tapped ✨ Polish |
 | **Net** | One `safeFetch`: host allow-list, rounding, timeouts | All outbound traffic goes through it |
 | **Geo** | Distance, spatial index, sun times, polyline | Pure, unit-tested |
 
@@ -174,28 +177,28 @@ All open source unless marked (SaaS). Exact versions are pinned in `package-lock
 |---|---|
 | Language / UI / build | **TypeScript** (strict), **React 19**, **Vite** |
 | Styling / animation | **Tailwind CSS v4**, **motion** |
-| State / worker RPC | **Zustand**, **Comlink** |
+| State | **Zustand** |
 | Validation | **Zod** (shared with the server) |
 | Auth client | **better-auth** client |
-| Map | **MapLibre GL JS** (CSP build, self-hosted worker), **OpenFreeMap** Liberty |
+| Map | **MapLibre GL JS** v6 (worker served from our own origin, so no `blob:` workers), **OpenFreeMap** Liberty |
 | Geo | **kdbush** + **geokdbush**, **suncalc**, polyline encoding |
 | Places / search / weather / routing | **Overpass** (OSM), **Photon**, **Open-Meteo**, **OSRM** (FOSSGIS) |
 | Database | **Dexie** (IndexedDB) |
-| Large files | **OPFS** |
 | PWA | **vite-plugin-pwa** (Workbox, `injectManifest`) |
-| Crypto | **WebCrypto** (AES-GCM-256, AES-KW, HKDF, SHA-256) + **hash-wasm** (Argon2id, streaming SHA-256) |
+| Crypto | **WebCrypto** (AES-GCM-256, AES-KW, HKDF, SHA-256) + **hash-wasm** (Argon2id) |
 | Password strength | **zxcvbn-ts** + Have I Been Pwned range API (k-anonymity: only the first 5 hash characters are sent) |
 | Media | `createImageBitmap` + `OffscreenCanvas` (resize + EXIF strip), `MediaRecorder` + `AudioContext` |
 | Compression | Native `CompressionStream` |
 
-### 4.2 On-device AI
+### 4.2 AI
 | Concern | Tool |
 |---|---|
-| Main model | **Gemma 4 E2B** (text + image + audio) |
-| Runtimes | **LiteRT-LM Web** (`@litert-lm/core`, WebGPU, constrained decoding); backup **Transformers.js** (`onnx-community/gemma-4-E2B-it-ONNX`, q4f16) |
-| Small-device model | **Gemma 3 270M** (Transformers.js, fp32 on WebGPU or WASM) |
-| Embeddings [L] | **EmbeddingGemma** |
-| No-WebGPU fallback | Rule-based ranker |
+| Model | **Gemma 4 26B A4B** (`@cf/google/gemma-4-26b-a4b-it`), open-weight, Apache-2.0 |
+| Host | **Cloudflare Workers AI** (SaaS) via its REST API, called only from our server. Free allocation: 10,000 neurons/day (≈1.1 M input or ≈370 K output tokens for this model). Prompts and outputs aren't used for training or stored, per Cloudflare's docs |
+| Fallback | Rule-based ranker + templated reasons (offline, provider down, or quota used up) |
+| Swappable | Because the model is open-weight, the same prompts work on any Gemma host (Google Cloud Vertex AI, a GPU droplet, self-hosted). One config line changes the host |
+
+> **Why not on the device?** We tested it: Gemma 4 E2B in the browser is a **2 GB download** before the AI works, and the 270M model that fits easily produced unusable output. Asking users to download 2 GB kills the first experience, so the model runs in the cloud instead.
 
 ### 4.3 Server
 | Concern | Tool |
@@ -209,6 +212,7 @@ All open source unless marked (SaaS). Exact versions are pinned in `package-lock
 | Security headers | Hono `secureHeaders` middleware + an explicit CSP |
 | Logging | **pino** with redaction (cookies, auth headers and bodies are never logged) |
 | Email | **Resend** (SaaS) for verification and reset emails |
+| AI | **Cloudflare Workers AI** REST API (`/accounts/{id}/ai/run/@cf/google/gemma-4-26b-a4b-it`) via plain `fetch` (`apps/api/src/lib/workersAi.ts`) |
 | Partner APIs | **Prior Labs TabPFN REST API** (`/tabpfn/*` routes), **SerpApi** (`serpapi` npm package) |
 | Telemetry | **Sentry** Node SDK |
 
@@ -235,8 +239,7 @@ ramble/
 ├─ apps/
 │  ├─ web/                          # the PWA
 │  │  ├─ public/
-│  │  │  ├─ icons/  manifest.webmanifest
-│  │  │  └─ wasm/                   # self-hosted model runtime WASM (no CDN)
+│  │  │  └─ icons/
 │  │  ├─ src/
 │  │  │  ├─ main.tsx  sw.ts
 │  │  │  ├─ app/                    # App shell, store slices, boot sequence
@@ -248,7 +251,7 @@ ramble/
 │  │  │  │  ├─ walk/                # routes, live walk banner, loops
 │  │  │  │  ├─ journal/             # timeline, memory composer
 │  │  │  │  ├─ updates/             # trail & park updates card (SerpApi)
-│  │  │  │  ├─ offline/             # "Get ready for offline" wizard
+│  │  │  │  ├─ offline/             # background area caching + "Offline-ready" chip
 │  │  │  │  ├─ account/             # sign up / in, recovery key, devices, sync status
 │  │  │  │  ├─ share/               # share links
 │  │  │  │  └─ settings/            # privacy screen, lock, backup, delete-all, toggles
@@ -256,10 +259,9 @@ ramble/
 │  │  │  │  ├─ crypto/              # keys, aead, wrap, argon2, account-keys, recovery
 │  │  │  │  ├─ db/                  # Dexie schema, repo, migrations
 │  │  │  │  ├─ sync/                # push, pull, merge, outbox
-│  │  │  │  ├─ ai/                  # Gemma client, capability, prompts, schemas, fallback
+│  │  │  │  ├─ ai/                  # /api/ai client, candidate builder, rule-based fallback
 │  │  │  │  ├─ personalize/         # feature extraction, TabPFN client, score cache
 │  │  │  │  ├─ geo/  net/  media/  offline/  telemetry/
-│  │  │  ├─ workers/ai.worker.ts
 │  │  │  └─ ui/                     # Sheet, Button, Chip, Toast …
 │  │  ├─ index.html  vite.config.ts
 │  └─ api/                          # the backend
@@ -269,11 +271,12 @@ ramble/
 │     │  ├─ db.ts                   # Mongo client, collections, indexes
 │     │  ├─ routes/
 │     │  │  ├─ sync.ts  vault.ts  media.ts
+│     │  │  ├─ ai.ts                # Gemma: suggest, polish journal, summarise updates
 │     │  │  ├─ personalize.ts       # TabPFN proxy
 │     │  │  ├─ placeUpdates.ts      # SerpApi proxy + cache
 │     │  │  └─ account.ts           # export, delete account
 │     │  ├─ middleware/             # rateLimit, requireSession, bodyLimit, logger
-│     │  └─ lib/                    # tabpfn client, serpapi client, quota, errors
+│     │  └─ lib/                    # workersAi, prompts, tabpfn, serpapi, quota, errors
 │     └─ test/
 ├─ packages/
 │  └─ shared/                       # Zod schemas + types shared by web and api
@@ -376,50 +379,50 @@ Derived from the visit count, never stored: **want** (0, Want to go) → **visit
 
 ---
 
-## 7. On-device AI pipeline (Gemma)
+## 7. AI pipeline (Gemma on Workers AI)
 
-### 7.1 Capability detection and tiers
+### 7.1 How a request flows
 ```mermaid
-flowchart TD
-    A[Boot] --> B{navigator.gpu?}
-    B -- no --> C3[Tier C: rules]
-    B -- yes --> C{Adapter limits OK?}
-    C -- no --> C2[Tier B: Gemma 3 270M]
-    C -- yes --> D{Saved benchmark?}
-    D -- yes --> E[Use saved tier]
-    D -- no --> F[Try E2B in the worker<br/>timeout + out-of-memory catch]
-    F -- ok --> C1[Tier A: Gemma 4 E2B<br/>text + image + audio]
-    F -- fail --> C2
+sequenceDiagram
+    participant D as Device
+    participant A as Ramble API
+    participant C as Cloudflare Workers AI (Gemma 4 26B)
+    D->>D: Online? If not → rule-based result immediately
+    D->>A: POST /api/ai/suggest {context, candidates[≤15]} (session cookie)
+    A->>A: Session + rate limit + Zod validation (caps, charset)
+    A->>A: Build the prompt from a fixed template (untrusted text in data fields)
+    A->>C: Gemma request (server-held token, 15 s timeout)
+    C-->>A: Text
+    A->>A: Parse JSON, Zod-validate, drop unknown ids, fill gaps with rules
+    A-->>D: { picks: [{id, reason}], source: 'gemma' | 'rules' }
 ```
 
-| Tier | Model | Features |
-|---|---|---|
-| A | Gemma 4 E2B | Suggestions, journal from voice, photo or text, sighting guesses, summaries of trail updates |
-| B | Gemma 3 270M | Suggestions, journal from text, summaries of trail updates |
-| C | Rules | Templated reasons; the journal is saved as typed; trail updates shown as headlines |
+- **Rendered first, refined second.** The device shows rule-based cards immediately and swaps in Gemma's reasons when they arrive (usually 1–3 s), so the AI never makes the user wait.
+- **Prompts live on the server.** The device sends structured data, never a prompt. That means a malicious client can't turn our endpoint into a free general-purpose chatbot.
+- **One model, one config line.** `GEMMA_MODEL` in `workersAi.ts`. Because Gemma is open-weight, moving to another host (Vertex AI, a GPU droplet, self-hosted) changes only the client, not the prompts.
 
-### 7.2 Worker lifecycle
-1. Download once into OPFS, with a **streaming SHA-256** check against a pinned hash.
-2. Load lazily, during idle time after the map is interactive.
-3. Keep it warm, and **clone** the conversation with the system prompt already processed for each request.
-4. Every request can be cancelled with an `AbortSignal`.
-5. Release the engine after 5 minutes hidden or under memory pressure.
+### 7.2 Tasks
+| Task | Route | Input | Output (Zod-validated) | Sends private text? | Fallback |
+|---|---|---|---|---|---|
+| **Suggest** | `POST /api/ai/suggest` | Context (minutes, mood, energy, minutes to sunset, rain) + ≤15 candidates `{id, kind, name (public OSM), distM, visited, tabpfn?}` | `{ picks: [{ id, reason ≤140 }] }` × 3 | No | Rule ranker + templated reasons |
+| **Polish journal** ✨ | `POST /api/ai/polish` | The note the user wrote + place name (+ one 768 px photo if the model supports images; to verify) | `{ title ≤60, body ≤600, tags ≤6, sighting? }` | **Yes, only when the user taps ✨ Polish** | Note saved as typed |
+| **Summarise updates** | inside `/api/place-updates` | ≤5 web snippets (untrusted) + place name | `{ headline ≤120, severity: info\|caution\|closed\|none }` | No (public web text) | First headline as-is |
+| Name a spot [L] | `POST /api/ai/name-spot` | Nearby POI kinds | `{ name ≤40 }` | No | "Spot near X" |
 
-### 7.3 Tasks
-| Task | Input | Output (Zod-validated) | Fallback |
-|---|---|---|---|
-| `rankSuggestions` | Context + ≤15 candidates (with their **TabPFN score** when available) | `{ picks: [{ id, reason ≤140 }] }` × 3 | Rule ranker |
-| `draftJournal` | Note text / audio / one image + place name | `{ title ≤60, body ≤600, tags ≤6, sighting? }` | Raw note |
-| `summarizeUpdates` | ≤5 trail-update snippets (untrusted web text) + place name | `{ headline ≤120, severity: 'info'\|'caution'\|'closed'\|'none' }` | First headline as-is |
-| `nameSpot` [L] | Nearby POI kinds | `{ name ≤40 }` | "Spot near X" |
+**Voice notes:** the phone keyboard's built-in dictation fills the note field, so no audio is ever uploaded.
 
-### 7.4 Guardrails
-- Constrained decoding to a JSON schema, then Zod validation; one retry, then fallback.
-- Picks must reference **ids from the candidate list**. Unknown ids are dropped.
-- Untrusted text (OSM names, user notes, **web snippets**) goes into delimited data fields, and the model is told to treat it as data.
-- The model has **no tools and no network access**. Its output is displayed as plain text with length caps.
-- The user edits journal drafts before they're saved. Sightings are labelled as guesses.
-- The model is told never to give safety-critical advice (edible plants, whether a trail is safe).
+### 7.3 Guardrails
+- **Validate everything.** JSON is parsed and Zod-validated, with one retry, then the rule fallback. Picks must use **ids from the candidate list**; unknown ids are dropped.
+- **Untrusted text** (OSM names, user notes, web snippets) goes into clearly delimited data fields, and the system prompt says to treat it as data.
+- **No agency.** The model has no tools. Its output is only ever displayed as plain text with length caps.
+- **The user is in control.** The user edits polished drafts before saving. Sightings are labelled as guesses. The model is told never to give safety-critical advice (edible plants, whether a trail is safe).
+- **Budgets.** `max_tokens` caps (300 for suggestions, 500 for polish), a 15 s timeout, and per-session and global daily limits that keep usage inside the free allocation (§11).
+
+### 7.4 Privacy of AI requests
+- Requests go **device → our server → Cloudflare**, so Cloudflare sees our server, never the user's IP. No user id is sent to Cloudflare.
+- Suggestions contain **public** place names only. Custom pins are labelled generically (e.g. "your saved spot, park"), never by their private name.
+- Journal text leaves the phone **only** on an explicit ✨ Polish tap, and the first time, a short explainer says where it goes.
+- Our server **doesn't log** prompts or outputs.
 
 ---
 
@@ -482,7 +485,7 @@ sequenceDiagram
 2. The API normalises the query and checks the **shared 24 h cache** in `placeUpdatesCache`. Results are public, so caching across users is safe and saves quota.
 3. On a cache miss it calls SerpApi (Google, results from the past month), with a query like `"<name>" <area> (closure OR closed OR event OR works OR alert)`.
 4. It returns ≤5 results `{title, snippet, source, date, url}`. The server validates URLs (`https:` only) and caps snippet lengths.
-5. On the device, **Gemma summarises** the results into a one-line headline with a severity (`info`, `caution`, `closed` or `none`).
+5. The server asks **Gemma** to summarise the results into a one-line headline with a severity (`info`, `caution`, `closed` or `none`). The summary is cached alongside the results, so it's shared by everyone looking at that place for 24 h.
 6. The result is saved encrypted in `onlineCache`. Offline, the card shows "Last checked 2 h ago".
 
 ### 9.2 Quota protection
@@ -558,6 +561,8 @@ All routes are under `/api`, same origin as the app, JSON only, Zod-validated, a
 | POST | `/api/sync/push` | account | 60/min | Upload envelopes |
 | GET | `/api/sync/pull` | account | 60/min | Download envelopes |
 | PUT/GET/DELETE | `/api/media/:id` | account | 30/min | Encrypted blobs |
+| POST | `/api/ai/suggest` | any session | 30/hour + global daily budget | Gemma ranks and explains 3 picks |
+| POST | `/api/ai/polish` | any session | 20/hour + global daily budget | Gemma polishes a journal note (user-initiated only) |
 | POST | `/api/personalize` | any session | 10/hour | TabPFN proxy |
 | GET | `/api/place-updates` | any session | 10/hour + global daily budget | SerpApi proxy + cache |
 | GET | `/api/account/export` | account | 2/hour | All ciphertext as one file |
@@ -576,7 +581,8 @@ All routes are under `/api`, same origin as the app, JSON only, Zod-validated, a
 | Map + your pins | ✅ cached area | Any area |
 | Search | ✅ your places + cached POIs | Photon worldwide |
 | Check-in, levels, journal | ✅ | Sync to your other devices |
-| Gemma suggestions, journal drafting | ✅ | – |
+| "Get me outside" suggestions | ✅ rule-based picks with templated reasons | **Gemma** picks and explains |
+| Journal | ✅ saved as typed | **✨ Polish** with Gemma (on tap) |
 | "Places you'll love" | ✅ last saved scores | Fresh TabPFN scores |
 | Trail and park updates | ✅ last result + age | Fresh SerpApi results |
 | Walk to a place | ✅ saved route / straight-line direction | A new OSRM route |
@@ -586,30 +592,30 @@ All routes are under `/api`, same origin as the app, JSON only, Zod-validated, a
 ### 12.2 What's cached where
 | Asset | Store | Strategy | Size |
 |---|---|---|---|
-| App shell, WASM | Cache API | Precached, versioned | ~1–2 MB |
-| Style, fonts, sprites, tiles | Cache API | Cache-first; the wizard prefetches z10–z14 for your area | A few MB |
-| POIs | IndexedDB | Wizard; refreshed after 14 days | < 1 MB |
+| App shell | Cache API | Precached, versioned | ~1.8 MB |
+| Style, fonts, sprites, tiles | Cache API | Cache-first; tiles you view are kept, plus a quiet background prefetch of z10–z14 around you on Wi-Fi | A few MB |
+| POIs | IndexedDB | Fetched in the background around you; refreshed after 14 days | < 1 MB |
 | Weather | IndexedDB | Stale-while-revalidate | KBs |
-| Gemma weights | OPFS | Downloaded once, hash-checked | E2B ≈ 1–2 GB (verify), 270M ≈ 300–600 MB |
-| Online results | IndexedDB (encrypted) | Last good result + time | KBs |
+| Online results (Gemma picks, TabPFN scores, trail updates) | IndexedDB (encrypted) | Last good result + time | KBs |
 | Your data | IndexedDB (encrypted) | Source of truth | Grows |
 
-### 12.3 "Get ready for offline" wizard
-1. Ask for persistent storage with `navigator.storage.persist()`. On iOS, show an **Install to Home Screen** tip, because installed apps avoid Safari's 7-day eviction.
-2. Check free space with `storage.estimate()` and offer the smaller model if space is tight.
-3. Tiles, POIs, weather, then the model (with a hash check and a one-time benchmark).
-4. Finish with **"Ramble is ready for zero bars ✓"**.
+### 12.3 Offline readiness, with no download step
+There's **no wizard and nothing to download**. While you use Ramble online, it quietly keeps what you'll need later:
+1. Map tiles you've viewed stay cached. On Wi-Fi, it also prefetches a small area (about 3 km) around you in the background, a few MB at most.
+2. Outdoor POIs and the 3-day forecast around you are refreshed in the background.
+3. It asks for persistent storage with `navigator.storage.persist()`. On iOS, a one-time gentle **Add to Home Screen** tip explains that it keeps your places safe (installed web apps avoid Safari's 7-day storage eviction).
+4. A small status chip ("Offline-ready for Northcote ✓") shows it worked. No progress bars, no decisions.
 
 ### 12.4 Connectivity
 - `navigator.onLine` plus a probe of `/api/health`. Online-only buttons show clear disabled states, never endless spinners.
-- The sync outbox is retried with exponential backoff. Online lookups (TabPFN, updates) **aren't queued**. They simply run next time.
+- The sync outbox is retried with exponential backoff. Online lookups (Gemma, TabPFN, updates) **aren't queued**. They simply run next time. A journal entry saved offline shows a "✨ Polish when online" hint.
 
 ---
 
 ## 13. Key flows
 
 ### 13.1 First launch (guest)
-Service worker installs → generate the data key and device key → anonymous session (quietly, only if online) → welcome card → "Show where I am" (explained first) → map + "Get ready for offline" card.
+Service worker installs → generate the data key and device key → anonymous session (quietly, only if online) → welcome card → "Show where I am" (explained first) → map. Background caching of the area starts quietly.
 
 ### 13.2 Get me outside
 ```mermaid
@@ -617,22 +623,22 @@ sequenceDiagram
     participant U as User
     participant E as Explore
     participant C as onlineCache / API
-    participant G as Gemma worker
     U->>E: 60 min · golden hour · easy
     E->>E: Candidates from saved + cached POIs (kdbush)
     E->>C: TabPFN scores (cached, or fresh if online)
     E->>E: Final score = TabPFN + rules + Want-to-go
-    E->>G: rankSuggestions(context, top 15)
-    G-->>E: 3 picks + reasons (validated)
+    E->>U: 3 rule-based cards immediately
+    E->>C: POST /api/ai/suggest(context, top 15), if online
+    C-->>E: Gemma's 3 picks + reasons (validated on the server)
     E->>C: Trail updates for the 3 picks (cached, or fresh if online)
-    E->>U: 3 cards: reason · "places you'll love 82%" · ⚠️ update badge
+    E->>U: Cards refine in place: Gemma's reason · "places you'll love 82%" · ⚠️ update badge
 ```
 
 ### 13.3 Walk, arrive, memory
 1. Route from OSRM (online), saved on the walk record. Offline: the saved route, or a straight-line direction.
 2. `watchPosition` **only in walk mode**, throttled, saved every 15 s.
 3. Arrival within 40 m → check in → level-up celebration.
-4. Memory: photo (resized, EXIF stripped) / voice / text → Gemma draft → the user edits → saved encrypted → queued for sync.
+4. Memory: photo (resized, EXIF stripped) + a note (typed or keyboard-dictated) → saved encrypted right away → optional **✨ Polish** (online) → Gemma draft → the user edits → saved → queued for sync.
 
 ### 13.4 Sign up (from guest)
 ```mermaid
@@ -661,7 +667,7 @@ Email + password → derive the keys → sign in with the auth key → `GET /api
 | Metric | Budget |
 |---|---|
 | Initial JS (gzip), excluding MapLibre | ≤ 120 KB |
-| MapLibre chunk (gzip) | ≤ 260 KB, in parallel |
+| MapLibre chunk (gzip) | ≤ 280 KB, in parallel (v6 measured at 268 KB) |
 | First Contentful Paint, repeat visit (service worker) | ≤ 0.8 s |
 | First Contentful Paint, first visit (mid-range phone, 4G) | ≤ 1.5 s |
 | Map interactive (warm) | ≤ 1.5 s |
@@ -669,15 +675,17 @@ Email + password → derive the keys → sign in with the auth key → `GET /api
 | API p95 (sync push of 100 records) | ≤ 300 ms |
 | `/api/place-updates` p95, cache hit / miss | ≤ 80 ms / ≤ 3 s |
 | `/api/personalize` p95 | ≤ 4 s (runs in the background; the UI never waits on it) |
-| Main-thread long tasks during inference | 0 |
+| `/api/ai/suggest` p95 | ≤ 3 s (rule-based cards show instantly; Gemma refines them) |
+| First request after Render's free instance sleeps | ~30–60 s for API calls only; the app shell is served by the service worker |
 
 ### 14.2 Techniques
 - **Code splitting by tab and sheet.** Account, sync and Argon2 code loads only when used.
 - **Pins on the GPU.** A single GeoJSON source with symbol layers, not DOM markers.
 - **kdbush spatial index** in memory. **Batched decryption**, with places first and media loaded lazily.
-- **Images:** 1600 px WebP, 256 px thumbnails, 768 px for Gemma.
-- **Gemma:** kept warm, system-prompt processing reused, short outputs, streamed reasons.
-- **Online lookups never block.** Suggestions render from rules and cache instantly, and TabPFN scores and updates **refine** the cards when they arrive.
+- **Images:** 1600 px WebP, 256 px thumbnails, 768 px if a photo is sent with ✨ Polish.
+- **Gemma:** short outputs (`max_tokens` caps), compact prompts (candidates as terse JSON), and a 15 s timeout with a rule fallback. Trail-update summaries are cached and shared for 24 h.
+- **Online lookups never block.** Suggestions render from rules and cache instantly, and Gemma's reasons, TabPFN scores and updates **refine** the cards when they arrive.
+- **Nothing heavy to download.** No model, no AI runtime. The whole app is about 0.4 MB gzipped.
 - **Sync** runs in the background and in batches. Pull is paginated.
 - **Server:** Hono on Node; Mongo indexes on every query path; connection pooling; shared SerpApi cache; gzip/brotli for JSON; static assets `immutable`.
 - **Cold starts:** Render **free** instance (no card needed). It sleeps after 15 minutes idle, so the first request afterwards takes ~30–60 s. Repeat visits still open instantly because the service worker serves the app shell from cache; only API calls wait. Wake the service before demos. Region **Singapore** (closest to Australia).
@@ -713,6 +721,10 @@ services:
         generateValue: true
       - key: BETTER_AUTH_URL
         sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_AI_TOKEN
+        sync: false
       - key: TABPFN_API_KEY
         sync: false
       - key: SERPAPI_KEY
@@ -743,8 +755,8 @@ Security headers are set **in the Hono app** (SECURITY.md §5.1–5.2), so they 
 
 | Where | Captured | Never captured |
 |---|---|---|
-| Device: Gemma | Tier, load ms, time to first token, tokens/s, output tokens, fallback used, validation failures | Prompts, outputs, names |
-| Device: performance | FCP, LCP, map-interactive, unlock ms, sync duration | URLs with queries, coordinates |
+| Device: performance | FCP, LCP, map-interactive, unlock ms, sync duration, "rule cards → Gemma cards" time | URLs with queries, coordinates |
+| Server: AI traces | A span per Gemma call: task, model, latency, input/output token counts (from the response), retries, validation failures, fallback used, ids dropped | Prompts, outputs, place names, notes |
 | Server: traces | Spans for each route, **TabPFN latency**, **SerpApi latency + cache hit rate**, Mongo query time | Bodies, cookies, emails, query strings |
 | Errors (both) | Type, stack (source maps), release | Breadcrumbs from fetch, console or DOM (disabled) |
 
@@ -762,7 +774,8 @@ Settings: `sendDefaultPii: false`, `beforeSend` and `beforeSendSpan` scrubbers, 
 | Integration | Repository on fake-indexeddb; sync merge with two simulated devices and conflicting edits | Vitest |
 | Integration (API) | Routes against **mongodb-memory-server**: auth flows, vault, push/pull, quotas, rate limits, **a user can never read another user's records** | Vitest |
 | Contract | Shared Zod schemas used by both the web app and the API | Type checks |
-| End-to-end | Offline wizard → offline mode → Explore, check-in, walk simulation; sign-up → second browser context signs in → data appears | Playwright |
+| Unit (API) | Gemma client (mocked fetch): errors become rule fallbacks; output parser drops unknown ids, caps lengths, survives prompt-injection candidates | Vitest |
+| End-to-end | Browse online → offline mode → map, Explore (rule cards), check-in, walk simulation; sign-up → second browser context signs in → data appears | Playwright |
 | Security | CSP and headers on the preview URL, EXIF stripped, no HTML sinks (lint), secrets scan | CI |
 | Manual | **Real iPhone, airplane mode, a real walk** | You 🌳 |
 
@@ -799,12 +812,11 @@ flowchart LR
 
 ## 20. Open questions to resolve first
 
-1. **Does Gemma 4 E2B run on your iPhone** (Safari 26, WebGPU)? Measure load time, tokens/s and memory.
-2. **Model files:** exact sizes, a pinned revision, and whether they're **gated** (gated files can't be downloaded anonymously by a browser).
-3. **Does LiteRT-LM Web accept image and audio input?** If not, use Transformers.js for those.
-4. **Which hosts do Hugging Face downloads redirect to?** Needed for the CSP. And are the runtime workers and WASM self-hostable?
-5. **TabPFN REST:** the exact `/tabpfn/*` request flow (prepare upload → upload → fit → predict) and the free usage limits for our row and column caps.
-6. **SerpApi** current free quota. Which engine gives the best closure and event results (Google vs Google News)?
-7. **Better Auth:** the anonymous plugin → account linking with the Mongo adapter; mounting under Hono; using the auth key as the password.
-8. **Render:** outbound IP ranges for Singapore (for the Atlas allow-list); claim the credits.
-9. **Entire CLI** on Windows.
+1. ✅ **Resolved: on-device vs hosted Gemma.** E2B in the browser is a 2 GB download and 270M gave unusable output (tested Oct 10), so Gemma is hosted on Cloudflare Workers AI. No downloads for users.
+2. **Workers AI + Gemma 4 26B:** confirm image input support, whether JSON mode / `response_format` works for this model, typical latency from Singapore, and real neuron usage per suggestion (to size the daily budget).
+3. **Cloudflare free plan:** confirm no card is needed, and create an API token scoped to **Workers AI only**.
+4. **TabPFN REST:** the exact `/tabpfn/*` request flow (prepare upload → upload → fit → predict) and the free usage limits for our row and column caps.
+5. **SerpApi** current free quota. Which engine gives the best closure and event results (Google vs Google News)?
+6. **Better Auth:** the anonymous plugin → account linking with the Mongo adapter; mounting under Hono; using the auth key as the password.
+7. **Render:** outbound IP ranges for Singapore (for the Atlas allow-list). The free plan has no static outbound IPs, so Atlas may need a wider allow-list (to verify).
+8. **Entire CLI** on Windows.

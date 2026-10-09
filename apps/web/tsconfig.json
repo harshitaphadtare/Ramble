@@ -3,7 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"],
     "jsx": "react-jsx",
-    "types": ["vite/client", "@webgpu/types", "vite-plugin-pwa/client"]
+    "types": ["vite/client", "vite-plugin-pwa/client"]
   },
   "include": ["src", "vite.config.ts"]
 }
