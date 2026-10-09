@@ -32,7 +32,9 @@ export function buildMessages({ context, candidates }: SuggestRequest): ChatMess
 /** Strips control and bidi-override characters and collapses whitespace. */
 function cleanText(s: string) {
   return s
-    .replace(/[\u0000-\u001f\u007f‪-‮⁦-⁩]/g, ' ')
+    // Control characters and bidi overrides (U+202A-202E, U+2066-2069) can hide or reorder text.
+    // eslint-disable-next-line no-control-regex -- matching control characters is the point
+    .replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -103,7 +105,7 @@ export interface SuggestDeps {
 export async function suggest(req: SuggestRequest, { run = runGemma, onFallback, onMeta }: SuggestDeps = {}): Promise<SuggestResponse> {
   const fallback = rulePicks(req.context, req.candidates);
   const allowed = new Set(req.candidates.map((c) => c.id));
-  let picks: Pick[] = [];
+  let picks: Pick[];
   let meta: GemmaMeta | undefined;
   try {
     const result = await run(buildMessages(req), { maxTokens: 1200, temperature: 0.4 });

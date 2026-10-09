@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { Check, Footprints, LocateFixed, SlidersHorizontal, Sparkles, WifiOff, Zap } from 'lucide-react';
+import { Check, Footprints, SlidersHorizontal, Sparkles, WifiOff, Zap } from 'lucide-react';
 import { MOODS, type Energy, type Mood } from '@ramble/shared';
 import { useMapStore } from '../../app/store/mapStore';
+import { LocationButton, LocationError } from '../map/LocationButton';
 import type { LonLat } from '../../lib/geo/geo';
 import { KIND_STYLE, MOOD_STYLE, gradient } from '../../ui/visuals';
 import { explore, type ExploreCard, type ExplorePrefs, type ExploreResult } from './explore';
@@ -162,7 +163,7 @@ export function ExplorePanel() {
   const [line, setLine] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const railRef = useRef<HTMLOListElement>(null);
-  const { map, userPos, locate, setPins, select, selectedId, selectedBy } = useMapStore();
+  const { map, userPos, setPins, select, selectedId, selectedBy } = useMapStore();
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -282,17 +283,9 @@ export function ExplorePanel() {
                 <p className="text-[11px] font-bold tracking-[0.14em] text-moss uppercase">Get me outside</p>
                 <div className="mb-4 flex items-end justify-between gap-3">
                   <h2 className="font-display text-[28px] leading-[1.1] font-semibold tracking-tight text-forest">Where to today?</h2>
-                  <button
-                    type="button"
-                    onClick={() => locate?.()}
-                    className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                      userPos ? 'bg-forest text-white' : 'bg-mist text-forest'
-                    }`}
-                  >
-                    <LocateFixed size={14} aria-hidden="true" />
-                    {userPos ? 'Near you' : 'Use my location'}
-                  </button>
+                  <LocationButton />
                 </div>
+                <LocationError />
 
                 <p className="mb-2 text-sm font-semibold text-ink/70">How long have you got?</p>
                 <Segmented id="time" options={TIMES} value={prefs.minutes} onChange={(minutes) => setPrefs({ ...prefs, minutes })} />

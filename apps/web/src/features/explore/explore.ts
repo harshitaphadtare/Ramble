@@ -60,26 +60,39 @@ function writeStored(cell: string, places: OutdoorPlace[]) {
   }
 }
 
+/** How long to wait for the API before using the map tiles instead. */
+const API_PATIENCE_MS = 8000;
+
 /**
  * Best source first: memory → this device (7 days) → our API (OSM via Overpass) → the map
- * tiles already on screen. The last one always works, offline included, so Explore never dead-ends.
+ * tiles already on screen. Overpass is often slow or rate-limited from Render, so the API gets
+ * API_PATIENCE_MS; after that the tile places are used and the API keeps going in the
+ * background to fill the cache for next time. Explore never waits long and never dead-ends.
  */
 async function placesNear(origin: LonLat, map: MapLibreMap | null, signal?: AbortSignal): Promise<OutdoorPlace[]> {
   const cell = `${snapToGrid(origin[1])},${snapToGrid(origin[0])}`;
   const hit = areaCache.get(cell) ?? readStored(cell);
   if (hit) return hit;
-  try {
-    const places = await fetchPlacesNear(origin, signal);
+
+  const fromApi = fetchPlacesNear(origin, signal).then((places) => {
     areaCache.set(cell, places);
     if (areaCache.size > 8) areaCache.delete(areaCache.keys().next().value!);
     writeStored(cell, places);
     return places;
+  });
+  fromApi.catch(() => {}); // a late failure after we've moved on is fine
+
+  const patience = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), API_PATIENCE_MS));
+  try {
+    const first = await Promise.race([fromApi, patience]);
+    if (first !== 'timeout' && first.length) return first;
   } catch (e) {
     if (signal?.aborted) throw e;
-    const fromMap = map ? await placesFromMapAround(map, origin) : [];
-    if (fromMap.length) return fromMap; // not cached: the next try may get the fuller OSM list
-    throw e;
   }
+
+  const fromMap = map ? await placesFromMapAround(map, origin) : [];
+  if (fromMap.length) return fromMap; // not cached: the API may still deliver the fuller list
+  return fromApi; // nothing on the map either: wait for the API after all
 }
 
 export function minutesToSunset(origin: LonLat, now = new Date()): number {

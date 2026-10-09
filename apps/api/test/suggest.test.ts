@@ -28,9 +28,10 @@ describe('parsePicks', () => {
 
   it('caps reasons and strips control and bidi characters', () => {
     const long = 'a'.repeat(300);
-    const [pick] = parsePicks(JSON.stringify({ picks: [{ id: 'p1', reason: `x‮\u0007y ${long}` }] }), allowed);
+    const [pick] = parsePicks(JSON.stringify({ picks: [{ id: 'p1', reason: `x\u202e\u0007y ${long}` }] }), allowed);
     expect(pick!.reason.length).toBeLessThanOrEqual(160);
-    expect(pick!.reason).not.toMatch(/[\u0000-\u001f‮]/);
+    // eslint-disable-next-line no-control-regex -- asserting control characters are gone
+    expect(pick!.reason).not.toMatch(/[\u0000-\u001f\u202e]/);
   });
 
   it('returns nothing for non-JSON or wrong shapes', () => {

@@ -83,10 +83,6 @@ body {
   }
 }
 
-/* Our own "Use my location" button drives the geolocate control, so hide its default button. */
-.maplibregl-ctrl-group:has(.maplibregl-ctrl-geolocate) {
-  display: none;
-}
 /* Keep MapLibre's top controls clear of the floating top bar. */
 .maplibregl-ctrl-top-right,
 .maplibregl-ctrl-top-left {
