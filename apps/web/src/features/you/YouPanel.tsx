@@ -11,6 +11,7 @@ import { JournalCard } from '../journal/JournalCard';
 import { AccountCard } from './AccountCard';
 import { WeeklyGoal } from './WeeklyGoal';
 import { MonthWrapped } from './MonthWrapped';
+import { BackupCard } from './BackupCard';
 import { setTelemetryOptOut, telemetryAvailable, telemetryOptedOut } from '../../lib/telemetry';
 import { personalizeOptedIn, setPersonalizeOptIn } from '../../lib/personalize/consent';
 import { useFeatures } from '../../app/store/featuresStore';
@@ -172,6 +173,7 @@ export function YouPanel() {
         Everything here is encrypted on this phone. Only encrypted copies leave it (if you turn on sync), plus a note when you tap ✨ Polish.
         <PersonalizeToggle />
         <TelemetryToggle />
+        <BackupCard />
         {confirmWipe ? (
           <button
             type="button"

@@ -6,7 +6,7 @@ import { locateOnce } from '../../lib/geo/locate';
 import { useMapStore } from './mapStore';
 
 /** Within this distance of a stop (and a decent GPS fix), you've arrived. Driving gets more slack. */
-const ARRIVED_M: Record<TravelMode, number> = { walk: 40, bike: 60, car: 120 };
+const ARRIVED_M: Record<TravelMode, number> = { walk: 60, bike: 80, car: 150 };
 const MIN_ACCURACY_M = 60;
 
 export interface WalkTarget {

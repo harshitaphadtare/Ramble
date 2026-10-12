@@ -43,6 +43,8 @@ interface UserState {
   dismissCelebration: () => void;
   /** "Delete all data": crypto-shreds this device's keys and clears everything. */
   wipe: () => Promise<void>;
+  /** Restores records from a decrypted backup; returns how many were stored. */
+  restore: (data: { place: unknown[]; visit: unknown[]; journal: unknown[] }) => Promise<number>;
 }
 
 const newId = () => crypto.randomUUID();
@@ -66,6 +68,23 @@ export const useUserStore = create<UserState>((set, get) => ({
     } catch {
       set({ status: 'error' });
     }
+  },
+
+  restore: async (data) => {
+    // Every record is validated by the vault before it's stored; anything malformed is skipped.
+    let n = 0;
+    for (const kind of ['place', 'visit', 'journal'] as const) {
+      for (const record of data[kind]) {
+        try {
+          await vault.put(kind, record as never);
+          n++;
+        } catch {
+          /* skip a bad record, keep the rest */
+        }
+      }
+    }
+    await get().reload();
+    return n;
   },
 
   reload: async () => {
