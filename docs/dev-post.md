@@ -61,6 +61,8 @@ On Saturday 10 October I took Ramble out for real, all the way from home to St K
 
 Out there, phone in hand, I realised something I hadn't noticed at my desk: a real outing is almost never one destination. I wanted to stop at places along the way, and Ramble could only take me to one. So when I got back, I built the trip planner. Now you can describe your outing in a sentence, add as many stops as you like, and Ramble routes the whole thing there and back.
 
+The second thing I noticed was that I'd taken lots of photos that day, but none of them made it into Ramble. The journal was already there; I just never opened it, because nothing reminded me to. So now, when you reach a stop, Ramble pings you: *"You're here! Snap a few photos and add a note so you remember this place."* One tap checks you in and opens the journal, so the memory gets saved while you're still standing there.
+
 ## Code
 
 {% github harshitaphadtare/Ramble %}
