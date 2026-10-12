@@ -4,6 +4,7 @@ import { distanceM, type LonLat } from '../../lib/geo/geo';
 import { fetchRoute, remainingAlongRoute, type TravelMode, type WalkRoute } from '../../lib/geo/route';
 import { locateOnce } from '../../lib/geo/locate';
 import { useMapStore } from './mapStore';
+import { useUiStore } from './uiStore';
 
 /** Within this distance of a stop (and a decent GPS fix), you've arrived. Driving gets more slack. */
 const ARRIVED_M: Record<TravelMode, number> = { walk: 60, bike: 80, car: 150 };
@@ -115,6 +116,11 @@ export const useWalkStore = create<WalkState>((set, get) => ({
     if (!plan.stops.length) return;
     planning = new AbortController();
     const signal = planning.signal;
+    // Out of the way so the route is the whole screen; only this trip's stops stay on the map.
+    useUiStore.setState({ tab: null, openPlaceId: null });
+    useMapStore.getState().setPins(
+      plan.stops.map((s, i) => ({ id: `trip-${i}`, rank: i + 1, name: s.name, lonLat: s.lonLat, color: s.leg === 'back' ? '#6fa36b' : '#1d3a2a' })),
+    );
     set({ status: 'planning', plan, index: 0, target: plan.stops[0]!, route: null, backRoute: null, remainingM: null, error: null });
     try {
       // No location (blocked, or a laptop)? Still plan the route, from the middle of the map.
@@ -188,6 +194,7 @@ export const useWalkStore = create<WalkState>((set, get) => ({
   stop: () => {
     planning?.abort();
     stopWatching();
+    if (get().status !== 'idle') useMapStore.getState().setPins([]);
     set({ status: 'idle', plan: null, home: null, index: 0, target: null, route: null, backRoute: null, remainingM: null, startedAt: null, error: null, fromMap: false });
   },
 }));

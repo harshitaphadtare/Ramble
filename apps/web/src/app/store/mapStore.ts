@@ -45,7 +45,9 @@ export const useMapStore = create<MapState>((set, get) => ({
     try {
       const { lonLat } = await locateOnce();
       set({ userPos: lonLat, locateStatus: 'located' });
-      get().map?.flyTo({ center: lonLat, zoom: Math.max(get().map?.getZoom() ?? 14, 14.5), duration: 900 });
+      // easeTo, not flyTo: a fly arcs out to a wide zoom mid-way, and if anything else moves the
+      // map then (a route, a pin), it gets stuck zoomed out over the whole state.
+      get().map?.easeTo({ center: lonLat, zoom: Math.max(get().map?.getZoom() ?? 14, 14.5), duration: 700 });
     } catch (e) {
       set({ locateStatus: 'error', locateError: e instanceof LocateFailure ? e.message : LOCATE_MESSAGES.unavailable });
     }

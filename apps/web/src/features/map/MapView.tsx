@@ -10,7 +10,7 @@ import { useUserStore } from '../../app/store/userStore';
 import { useWalkStore } from '../../app/store/walkStore';
 import type { LonLat } from '../../lib/geo/geo';
 import { fogGeoJSON } from '../../lib/geo/explored';
-import { isWide } from '../../ui/Sheet';
+import { mapPadding } from '../../ui/Sheet';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -259,8 +259,8 @@ export function MapView() {
           [Math.min(...lons), Math.min(...lats)],
           [Math.max(...lons), Math.max(...lats)],
         ],
-        // During a trip the panels are closed; on a laptop keep clear of the banner (top left).
-        { padding: isWide() ? { top: 150, bottom: 110, left: 60, right: 60 } : { top: 150, bottom: 120, left: 40, right: 40 }, maxZoom: 16.5, duration: 800 },
+        // During a trip the panels are closed: the whole map, minus the banner and the menu.
+        { padding: { ...mapPadding('none'), top: 150 }, maxZoom: 16.5, duration: 800 },
       );
     }
   }, [map, route, backRoute]);

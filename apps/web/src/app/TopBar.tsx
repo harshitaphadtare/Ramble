@@ -68,9 +68,9 @@ export function TopBar() {
     <header className="pointer-events-none absolute inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex items-center justify-between gap-2">
       <div className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-cream/85 py-1.5 pr-3.5 pl-1.5 shadow-float backdrop-blur-xl">
         <Logo />
-        <span className="font-display text-[19px] font-semibold tracking-tight text-forest">Ramble</span>
+        <span className="hidden font-display text-[19px] font-semibold tracking-tight text-forest min-[360px]:inline">Ramble</span>
       </div>
-      <div className="pointer-events-auto flex items-center gap-1.5">
+      <div className="pointer-events-auto flex min-w-0 items-center gap-1.5">
         {!online && (
           <span className="flex items-center gap-1 rounded-full bg-ink/80 px-2.5 py-1.5 text-xs font-semibold text-white shadow-float backdrop-blur-xl">
             <WifiOff size={13} aria-hidden="true" /> Offline
@@ -79,20 +79,20 @@ export function TopBar() {
         {weather && SkyIcon && (
           <span
             title={`${weather.tempC}°C, ${SKY_TEXT[weather.sky]}${weather.rainPct >= 20 ? `, ${weather.rainPct}% chance of rain in the next hour` : ''}`}
-            className="flex items-center gap-1.5 rounded-full bg-cream/85 px-3 py-1.5 text-xs font-semibold text-ink/80 shadow-float backdrop-blur-xl"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-cream/85 px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap text-ink/80 shadow-float backdrop-blur-xl"
           >
             <SkyIcon size={14} aria-hidden="true" />
             {weather.tempC}°
-            {weather.rainPct >= 20 && <span className="text-[#3b82f6]">{weather.rainPct}%</span>}
+            {weather.rainPct >= 20 && <span className="hidden text-[#3b82f6] min-[400px]:inline">{weather.rainPct}%</span>}
           </span>
         )}
         <span
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-float backdrop-blur-xl ${
+          className={`flex max-w-[48vw] items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap shadow-float backdrop-blur-xl sm:max-w-none ${
             light.warm ? 'bg-gradient-to-r from-[#f9c06a] to-[#ee8a3f] text-white' : 'bg-cream/85 text-ink/80'
           }`}
         >
-          <LightIcon size={14} aria-hidden="true" />
-          {light.text}
+          <LightIcon size={14} className="shrink-0" aria-hidden="true" />
+          <span className="truncate">{light.text}</span>
         </span>
       </div>
     </header>

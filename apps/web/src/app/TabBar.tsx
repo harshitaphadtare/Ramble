@@ -36,7 +36,7 @@ export function TabBar({ tab, onChange }: { tab: Tab | null; onChange: (t: Tab) 
               />
             )}
             <Icon size={19} className={`relative ${active ? 'text-forest' : 'text-cream/70'}`} aria-hidden="true" />
-            <span className={`relative ${active ? 'text-forest' : 'text-cream/80'}`}>{label}</span>
+            <span className={`relative ${active ? 'text-forest' : 'text-cream/80 max-[359px]:sr-only'}`}>{label}</span>
           </button>
         );
       })}

@@ -103,28 +103,28 @@ function MoodTile({ mood, active, onClick }: { mood: Mood; active: boolean; onCl
 function SourceBadge({ result }: { result: ExploreResult }) {
   if (result.refining) {
     return (
-      <span className="relative flex items-center gap-1 overflow-hidden rounded-full bg-forest px-2.5 py-1 text-xs font-semibold text-white">
+      <span className="relative flex items-center gap-1 shrink-0 overflow-hidden rounded-full bg-forest px-2 py-0.5 text-[11px] font-semibold text-white">
         <m.span animate={{ rotate: [0, 20, -10, 0] }} transition={{ repeat: Infinity, duration: 1.4 }}>
           <Sparkles size={13} aria-hidden="true" />
         </m.span>
-        Gemma is thinking
+        Gemma…
         <span className="skeleton absolute inset-0 opacity-30 mix-blend-overlay" aria-hidden="true" />
       </span>
     );
   }
   if (result.source === 'gemma') {
     return (
-      <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-forest to-moss px-2.5 py-1 text-xs font-semibold text-white">
-        <Sparkles size={13} aria-hidden="true" /> Picked by Gemma
+      <span className="flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-forest to-moss px-2 py-0.5 text-[11px] font-semibold text-white">
+        <Sparkles size={12} aria-hidden="true" /> Gemma
       </span>
     );
   }
   return navigator.onLine ? (
-    <span className="flex items-center gap-1 rounded-full bg-mist px-2.5 py-1 text-xs font-semibold text-forest">
+    <span className="flex items-center gap-1 shrink-0 rounded-full bg-mist px-2 py-0.5 text-[11px] font-semibold text-forest">
       <Zap size={13} aria-hidden="true" /> Quick picks
     </span>
   ) : (
-    <span className="flex items-center gap-1 rounded-full bg-ink/80 px-2.5 py-1 text-xs font-semibold text-white">
+    <span className="flex items-center gap-1 shrink-0 rounded-full bg-ink/80 px-2 py-0.5 text-[11px] font-semibold text-white">
       <WifiOff size={13} aria-hidden="true" /> Offline picks
     </span>
   );
@@ -135,34 +135,34 @@ function PlaceCard({ card, rank, selected }: { card: ExploreCard; rank: number; 
   const Icon = s.icon;
   return (
     <article
-      className={`flex h-full flex-col rounded-[24px] bg-cream p-4 shadow-sheet transition-[box-shadow,transform] ${
+      className={`flex h-full flex-col rounded-[20px] bg-cream p-3.5 shadow-sheet transition-[box-shadow,transform] ${
         selected ? 'ring-2 ring-forest' : ''
       }`}
     >
-      <div className="flex items-start gap-3">
-        <span className="relative grid size-12 shrink-0 place-items-center rounded-2xl text-white" style={{ background: gradient(s.from, s.to) }}>
-          <Icon size={22} strokeWidth={2.2} aria-hidden="true" />
-          <span className="absolute -top-1.5 -left-1.5 grid size-5 place-items-center rounded-full bg-forest-deep text-[11px] font-bold text-white ring-2 ring-cream">
+      <div className="flex items-center gap-3">
+        <span className="relative grid size-10 shrink-0 place-items-center rounded-xl text-white" style={{ background: gradient(s.from, s.to) }}>
+          <Icon size={19} strokeWidth={2.2} aria-hidden="true" />
+          <span className="absolute -top-1.5 -left-1.5 grid size-[18px] place-items-center rounded-full bg-forest-deep text-[10px] font-bold text-white ring-2 ring-cream">
             {rank}
           </span>
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-[19px] leading-tight font-semibold text-ink">{card.place.name}</h3>
-          <p className="mt-0.5 flex items-center gap-2 text-xs font-medium text-ink/55">
+          <h3 className="truncate font-display text-[17px] leading-tight font-semibold text-ink">{card.place.name}</h3>
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-ink/55">
             {s.label}
             <span aria-hidden="true">·</span>
-            <span className="flex items-center gap-1">
-              <Footprints size={12} aria-hidden="true" /> {card.walkMin} min walk
-            </span>
+            <Footprints size={12} aria-hidden="true" /> {card.walkMin} min
+            {card.love !== undefined && (
+              <span className="ml-1 rounded-full bg-forest/10 px-1.5 font-bold text-forest" title="TabPFN, from your own visit history">
+                💚 {Math.round(card.love * 100)}%
+              </span>
+            )}
           </p>
         </div>
       </div>
-      {card.love !== undefined && (
-        <p className="mt-2 inline-flex w-fit items-center gap-1 rounded-full bg-forest/10 px-2 py-0.5 text-[11px] font-bold text-forest" title="TabPFN, from your own visit history">
-          💚 {Math.round(card.love * 100)}% your kind of place
-        </p>
-      )}
-      <p className="mt-3 flex-1 text-[14px] leading-relaxed text-ink/75">{card.reason}</p>
+      <p className="mt-2 line-clamp-2 flex-1 text-[13px] leading-snug text-ink/70" title={card.reason}>
+        {card.reason}
+      </p>
       <CardActions place={card.place} />
     </article>
   );
@@ -204,16 +204,16 @@ function CardActions({ place }: { place: OutdoorPlace }) {
     });
 
   return (
-    <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+    <div className="mt-2.5 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
         onClick={() => void useWalkStore.getState().start({ name: place.name, kind: place.kind, lonLat: [place.lon, place.lat], placeId: saved?.id, sourceId: place.id })}
-        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-forest py-2 text-sm font-semibold text-white"
+        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-forest py-2 text-[13px] font-semibold text-white"
       >
-        <Navigation size={15} aria-hidden="true" /> Walk here
+        <Navigation size={14} aria-hidden="true" /> Walk here
       </button>
-      <button type="button" onClick={() => void arrived()} disabled={busy} className="flex items-center justify-center gap-1.5 rounded-xl bg-mist px-3 py-2 text-sm font-semibold text-forest disabled:opacity-60">
-        <MapPinCheck size={15} aria-hidden="true" /> I'm here
+      <button type="button" onClick={() => void arrived()} disabled={busy} title="I'm here: check in" className="flex items-center justify-center gap-1 rounded-xl bg-mist px-2.5 py-2 text-[13px] font-semibold text-forest disabled:opacity-60">
+        <MapPinCheck size={14} aria-hidden="true" /> I'm here
       </button>
       <button
         type="button"
@@ -221,7 +221,7 @@ function CardActions({ place }: { place: OutdoorPlace }) {
         disabled={busy}
         aria-pressed={!!saved?.wantToGo}
         aria-label={saved?.wantToGo ? 'Remove from Want to go' : 'Save to Want to go'}
-        className={`grid size-9 place-items-center rounded-xl ${saved?.wantToGo ? 'bg-sunset text-white' : 'bg-mist text-forest'}`}
+        className={`grid size-[34px] place-items-center rounded-xl ${saved?.wantToGo ? 'bg-sunset text-white' : 'bg-mist text-forest'}`}
       >
         {saved?.wantToGo ? <BookmarkCheck size={16} aria-hidden="true" /> : <Bookmark size={16} aria-hidden="true" />}
       </button>
@@ -261,6 +261,12 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
   const { map, userPos, setPins, select, selectedId, selectedBy } = useMapStore();
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // Reopening Explore after a walk: put the picks back on the map (the walk showed only its stops).
+  useEffect(() => {
+    if (hidden || stage !== 'results' || !result || useWalkStore.getState().status !== 'idle') return;
+    setPins(result.cards.map((c, i) => ({ id: c.place.id, rank: i + 1, name: c.place.name, lonLat: [c.place.lon, c.place.lat], color: KIND_STYLE[c.place.kind].pin })));
+  }, [hidden, stage, result, setPins]);
 
   useEffect(() => {
     if (stage !== 'loading') return;
@@ -503,13 +509,13 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
           </m.section>
         ) : (
           <m.section key="results" {...sheetMotion} aria-label="Places to go" className="md:flex md:min-h-0 md:flex-col">
-            <div className="mx-3 mb-2.5 flex items-center justify-between gap-2 rounded-2xl bg-cream/90 py-2 pr-2 pl-3.5 shadow-float backdrop-blur-xl">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-forest">{summary}</p>
-                <div className="mt-0.5 flex">{result && <SourceBadge result={result} />}</div>
+            <div className="mx-3 mb-2 flex items-center gap-2 rounded-2xl bg-cream/95 py-1.5 pr-1.5 pl-3 shadow-float backdrop-blur-xl">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <p className="truncate text-[13px] font-bold text-forest">{summary}</p>
+                {result && <SourceBadge result={result} />}
               </div>
-              <button type="button" onClick={edit} className="flex shrink-0 items-center gap-1.5 rounded-xl bg-mist px-3 py-2 text-sm font-semibold text-forest">
-                <SlidersHorizontal size={15} aria-hidden="true" /> Change
+              <button type="button" onClick={edit} aria-label="Change time, mood or energy" title="Change" className="grid size-8 shrink-0 place-items-center rounded-full bg-mist text-forest">
+                <SlidersHorizontal size={15} aria-hidden="true" />
               </button>
               <div className="relative size-8 shrink-0 [&>button]:static">
                 <MinimiseButton />

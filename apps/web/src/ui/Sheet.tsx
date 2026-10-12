@@ -31,10 +31,26 @@ export const PANEL_BODY =
 export const isWide = () => window.matchMedia('(min-width: 768px)').matches;
 
 /** Map padding that keeps routes and pins in the part of the map you can actually see. */
-export const mapPadding = (under: 'cards' | 'sheet' = 'cards'): { top: number; bottom: number; left: number; right: number } =>
-  isWide()
-    ? { top: 90, bottom: 110, left: 60, right: SIDEBAR_PX + 50 }
-    : { top: 80, bottom: under === 'sheet' ? Math.round(window.innerHeight * 0.62) + 40 : 290, left: 40, right: 40 };
+export const mapPadding = (under: 'cards' | 'sheet' | 'none' = 'cards'): Padding =>
+  safePadding(
+    isWide()
+      ? { top: 90, bottom: 110, left: 60, right: under === 'none' ? 60 : SIDEBAR_PX + 50 }
+      : { top: under === 'none' ? 150 : 80, bottom: under === 'sheet' ? Math.round(window.innerHeight * 0.62) + 40 : under === 'none' ? 120 : 290, left: 40, right: 40 },
+  );
+
+type Padding = { top: number; bottom: number; left: number; right: number };
+
+/**
+ * Padding bigger than the map makes MapLibre zoom out to the whole country. Always leave at
+ * least a 160 px window to fit things into.
+ */
+export function safePadding(p: Padding): Padding {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const sx = Math.min(1, Math.max(0, w - 160) / Math.max(1, p.left + p.right));
+  const sy = Math.min(1, Math.max(0, h - 160) / Math.max(1, p.top + p.bottom));
+  return { top: Math.round(p.top * sy), bottom: Math.round(p.bottom * sy), left: Math.round(p.left * sx), right: Math.round(p.right * sx) };
+}
 /** Minimise the open panel back to just the map; tapping its tab opens it again. */
 export function MinimiseButton() {
   return (
