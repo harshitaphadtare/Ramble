@@ -16,6 +16,8 @@ interface UiState {
   /** The journal composer, opened right after a check-in or from a place. */
   composer: { placeId?: string; visitId?: string; entryId?: string } | null;
   toast: Toast | null;
+  /** Set when a new version of Ramble is ready; calling it reloads into it. */
+  applyUpdate: (() => void) | null;
   /** Extra map view from Wander: where you go most (heat), or what you haven't explored (fog). */
   mapLayer: 'none' | 'heat' | 'fog';
   /** Where the fog of war is measured from (fixed when it's switched on, so panning doesn't move it). */
@@ -34,6 +36,7 @@ export const useUiStore = create<UiState>((set) => ({
   openPlaceId: null,
   composer: null,
   toast: null,
+  applyUpdate: null,
   mapLayer: 'none',
   fogCentre: null,
   setMapLayer: (mapLayer, fogCentre = null) => set({ mapLayer, fogCentre }),

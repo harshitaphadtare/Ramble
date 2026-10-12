@@ -13,6 +13,7 @@ import { WalkBanner } from '../features/walk/WalkBanner';
 import { Welcome } from '../features/you/Welcome';
 import { TopBar } from './TopBar';
 import { TabBar } from './TabBar';
+import { UpdateBar } from './UpdateBar';
 import { useUiStore } from './store/uiStore';
 import { useUserStore } from './store/userStore';
 import { useFeatures } from './store/featuresStore';
@@ -54,6 +55,7 @@ export function App() {
         <Toast />
         <Celebration />
         <Welcome />
+        <UpdateBar />
       </div>
     </LazyMotion>
   );
