@@ -48,12 +48,16 @@ export function TripPlanner() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoundPlace[]>([]);
   const searchAbort = useRef<AbortController | null>(null);
+  /** The start, fixed when planning begins (the map moves to show the stops afterwards). */
+  const startRef = useRef<LonLat | null>(null);
 
   const origin = (): LonLat => {
     const { userPos, map } = useMapStore.getState();
     if (userPos) return userPos;
+    if (startRef.current) return startRef.current;
     const c = map?.getCenter();
-    return c ? [c.lng, c.lat] : [144.9631, -37.8136];
+    startRef.current = c ? [c.lng, c.lat] : [144.9631, -37.8136];
+    return startRef.current;
   };
 
   // Show the stops on the map as numbered pins while planning.
@@ -179,7 +183,7 @@ export function TripPlanner() {
     } catch {
       /* optional */
     }
-    void useWalkStore.getState().startTrip({ stops: ordered, mode, backMode: roundTrip ? backMode : null });
+    void useWalkStore.getState().startTrip({ stops: ordered, mode, backMode: roundTrip ? backMode : null, from: startRef.current ?? undefined });
     useUiStore.getState().closeTab();
   }
 

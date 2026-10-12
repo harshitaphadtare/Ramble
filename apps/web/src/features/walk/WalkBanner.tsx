@@ -11,7 +11,7 @@ const MODE_VERB: Record<TravelMode, string> = { walk: 'Walking', bike: 'Cycling'
 
 /** Floating banner during a walk or trip: what's next, distance left, and the arrival prompt. */
 export function WalkBanner() {
-  const { status, plan, index, target, route, backRoute, remainingM, error, stop, next } = useWalkStore();
+  const { status, plan, index, target, route, backRoute, remainingM, error, fromMap, stop, next } = useWalkStore();
   const visible = status !== 'idle' && (target || status === 'done');
   const total = plan ? plan.stops.length + (plan.backMode ? 1 : 0) : 0;
   const isHome = !!plan && index >= plan.stops.length;
@@ -94,7 +94,9 @@ export function WalkBanner() {
                   {status === 'planning' && 'Planning the route…'}
                   {status === 'walking' &&
                     remainingM !== null &&
-                    `${fmtDist(remainingM)} left · about ${minutesFor(remainingM, mode)} min${straight ? ' · straight line (offline)' : ''}`}
+                    `${fmtDist(remainingM)} left · about ${minutesFor(remainingM, mode)} min${straight ? ' · straight line (offline)' : ''}${
+                      fromMap ? ' · from the map centre (turn on location to track)' : ''
+                    }`}
                   {status === 'error' && (error ?? "Couldn't start the trip.")}
                 </p>
               </div>

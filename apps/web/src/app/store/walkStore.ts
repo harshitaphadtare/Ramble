@@ -30,6 +30,8 @@ export interface TripPlan {
   mode: TravelMode;
   /** How you're coming back, or null for one way. */
   backMode: TravelMode | null;
+  /** Where the plan was made from: the start if your location isn't available. */
+  from?: LonLat;
 }
 
 type Status = 'idle' | 'planning' | 'walking' | 'arrived' | 'done' | 'error';
@@ -48,6 +50,8 @@ interface WalkState {
   remainingM: number | null;
   startedAt: number | null;
   error: string | null;
+  /** Location was unavailable, so the route starts from the map centre (no live tracking). */
+  fromMap: boolean;
   /** One stop, walking, one way: what "Walk here" does. */
   start: (target: WalkTarget) => Promise<void>;
   startTrip: (plan: TripPlan) => Promise<void>;
@@ -102,6 +106,7 @@ export const useWalkStore = create<WalkState>((set, get) => ({
   remainingM: null,
   startedAt: null,
   error: null,
+  fromMap: false,
 
   start: (target) => get().startTrip({ stops: [{ ...target, leg: 'out' }], mode: 'walk', backMode: null }),
 
@@ -112,8 +117,23 @@ export const useWalkStore = create<WalkState>((set, get) => ({
     const signal = planning.signal;
     set({ status: 'planning', plan, index: 0, target: plan.stops[0]!, route: null, backRoute: null, remainingM: null, error: null });
     try {
-      const from = useMapStore.getState().userPos ?? (await locateOnce()).lonLat;
-      useMapStore.setState({ userPos: from, locateStatus: 'located' });
+      // No location (blocked, or a laptop)? Still plan the route, from the middle of the map.
+      let from = useMapStore.getState().userPos;
+      let fromMap = false;
+      if (!from) {
+        const located = await locateOnce().catch(() => null);
+        if (signal.aborted) return;
+        if (located) {
+          from = located.lonLat;
+          useMapStore.setState({ userPos: from, locateStatus: 'located' });
+        } else {
+          const c = useMapStore.getState().map?.getCenter();
+          from = plan.from ?? (c ? [c.lng, c.lat] : null);
+          if (!from) throw new Error('Turn on location to start a trip.');
+          fromMap = true;
+        }
+      }
+      set({ fromMap });
       const out = plan.stops.filter((s) => s.leg === 'out');
       const back = plan.stops.filter((s) => s.leg === 'back');
       const lastOut = (out.at(-1) ?? plan.stops[0]!).lonLat;
@@ -168,7 +188,7 @@ export const useWalkStore = create<WalkState>((set, get) => ({
   stop: () => {
     planning?.abort();
     stopWatching();
-    set({ status: 'idle', plan: null, home: null, index: 0, target: null, route: null, backRoute: null, remainingM: null, startedAt: null, error: null });
+    set({ status: 'idle', plan: null, home: null, index: 0, target: null, route: null, backRoute: null, remainingM: null, startedAt: null, error: null, fromMap: false });
   },
 }));
 
