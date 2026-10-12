@@ -67,6 +67,20 @@ export function toItems(raw: unknown): PlaceUpdateItem[] {
   return items;
 }
 
+const GENERIC_WORDS = new Set(['the', 'trail', 'track', 'walk', 'park', 'parks', 'garden', 'gardens', 'reserve', 'beach', 'lookout', 'summit', 'national']);
+const normalise = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+/**
+ * Google loosens a quoted query when nothing matches, so "Merri Creek Trail" can come back as
+ * any creek closure anywhere. Keep only results that name the place itself (minus generic words
+ * like "trail" or "park").
+ */
+export function aboutPlace(items: PlaceUpdateItem[], name: string): PlaceUpdateItem[] {
+  const words = normalise(name).split(' ');
+  const core = words.filter((w) => !GENERIC_WORDS.has(w)).join(' ') || words.join(' ');
+  return items.filter((i) => ` ${normalise(`${i.title} ${i.snippet}`)} `.includes(` ${core} `));
+}
+
 export function searchPlaceUpdates(query: PlaceUpdatesQuery, fetchImpl: typeof fetch = fetch): Promise<PlaceUpdateItem[]> {
   return traced('serpapi.search', 'http.client', { 'ramble.engine': 'google' }, async (set) => {
     const items = await runSearch(query, fetchImpl);
@@ -89,5 +103,5 @@ async function runSearch(query: PlaceUpdatesQuery, fetchImpl: typeof fetch): Pro
     throw new SerpApiUnavailableError(`SerpApi request failed: ${(e as Error).name}`);
   });
   if (!res.ok) throw new SerpApiUnavailableError(`SerpApi responded ${res.status}`);
-  return toItems(await res.json());
+  return aboutPlace(toItems(await res.json()), query.name);
 }

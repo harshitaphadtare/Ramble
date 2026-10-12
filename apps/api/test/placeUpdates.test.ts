@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PlaceUpdateItem } from '@ramble/shared';
 import { createApp } from '../src/app';
-import { buildSearchQuery, toItems } from '../src/lib/serpapi';
+import { aboutPlace, buildSearchQuery, toItems } from '../src/lib/serpapi';
 import { summariseUpdates } from '../src/lib/updatesSummary';
 
 const reply = (text: string) => ({ text, meta: { contentChars: text.length, reasoningChars: 0 } });
@@ -25,6 +25,13 @@ describe('serpapi helpers', () => {
     expect(items).toHaveLength(5);
     expect(items.every((i) => i.url.startsWith('https://'))).toBe(true);
     expect(toItems({ nonsense: true })).toEqual([]);
+  });
+
+  it('drops results about some other place', () => {
+    const other = { ...item, title: 'Oak Creek temporary closure lifts this week', snippet: 'West Fork remains closed.' };
+    const kept = aboutPlace([item, other, { ...item, title: 'Works on the MERRI-CREEK path', snippet: '' }], 'Merri Creek Trail');
+    expect(kept.map((i) => i.title)).toEqual([item.title, 'Works on the MERRI-CREEK path']);
+    expect(aboutPlace([item], 'Park')).toEqual([]);
   });
 });
 
