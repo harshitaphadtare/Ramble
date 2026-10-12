@@ -39,8 +39,9 @@ export function App() {
             Your saved places couldn't be opened on this device. Private browsing can block storage; try a normal window.
           </p>
         )}
+        {/* Explore stays mounted while minimised, so your picks and pins are still there when you reopen it. */}
+        <ExplorePanel hidden={tab !== 'explore'} />
         <AnimatePresence mode="wait">
-          {tab === 'explore' && <ExplorePanel key="explore" />}
           {tab === 'checkin' && <CheckInPanel key="checkin" />}
           {tab === 'you' && <YouPanel key="you" />}
         </AnimatePresence>

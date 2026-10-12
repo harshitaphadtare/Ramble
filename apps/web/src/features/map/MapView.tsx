@@ -9,7 +9,6 @@ import { useUiStore } from '../../app/store/uiStore';
 import { useUserStore } from '../../app/store/userStore';
 import { useWalkStore } from '../../app/store/walkStore';
 import type { LonLat } from '../../lib/geo/geo';
-import { isWide } from '../../ui/Sheet';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -208,7 +207,7 @@ export function MapView() {
           [Math.min(...lons), Math.min(...lats)],
           [Math.max(...lons), Math.max(...lats)],
         ],
-        { padding: isWide() ? { top: 150, bottom: 110, left: 470, right: 60 } : { top: 150, bottom: 120, left: 40, right: 40 }, maxZoom: 16.5, duration: 800 },
+        { padding: { top: 150, bottom: 120, left: 40, right: 40 }, maxZoom: 16.5, duration: 800 },
       );
     }
   }, [map, route]);

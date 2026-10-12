@@ -13,7 +13,7 @@ import { LevelBadge } from '../../ui/Level';
 import { LocationButton, LocationError } from '../map/LocationButton';
 import type { LonLat } from '../../lib/geo/geo';
 import { KIND_STYLE, MOOD_STYLE, gradient } from '../../ui/visuals';
-import { PANEL_BODY, PANEL_POSITION, mapPadding, sheetMotion } from '../../ui/Sheet';
+import { MinimiseButton, PANEL_BODY, PANEL_POSITION, mapPadding, sheetMotion } from '../../ui/Sheet';
 import { explore, type ExploreCard, type ExplorePrefs, type ExploreResult } from './explore';
 
 const TIMES = [
@@ -75,18 +75,18 @@ function MoodTile({ mood, active, onClick }: { mood: Mood; active: boolean; onCl
       aria-checked={active}
       onClick={onClick}
       whileTap={{ scale: 0.96 }}
-      className={`relative flex h-[104px] w-[112px] shrink-0 snap-start md:h-[84px] md:w-auto flex-col justify-between overflow-hidden rounded-2xl p-3 text-left text-white transition-shadow ${
+      className={`relative flex h-[84px] min-w-0 flex-col justify-between overflow-hidden rounded-2xl p-1.5 text-left text-white transition-shadow sm:h-[100px] sm:p-3 ${
         active ? 'shadow-float ring-2 ring-forest ring-offset-2 ring-offset-cream' : 'opacity-90'
       }`}
       style={{ background: gradient(s.from, s.to) }}
     >
-      <Icon size={22} strokeWidth={2.2} aria-hidden="true" />
+      <Icon className="size-[18px] sm:size-[22px]" strokeWidth={2.2} aria-hidden="true" />
       <span>
-        <span className="block text-[15px] leading-tight font-bold">{s.label}</span>
-        <span className="block text-[11px] font-medium text-white/80">{s.blurb}</span>
+        <span className="block text-[11px] leading-tight font-bold tracking-tight sm:text-[15px] sm:tracking-normal">{s.label}</span>
+        <span className="hidden text-[11px] font-medium text-white/80 sm:block">{s.blurb}</span>
       </span>
       {active && (
-        <m.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-2 right-2 grid size-5 place-items-center rounded-full bg-white text-forest">
+        <m.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full bg-white text-forest sm:top-2 sm:right-2">
           <Check size={13} strokeWidth={3} aria-hidden="true" />
         </m.span>
       )}
@@ -242,7 +242,7 @@ function TasteHint() {
   );
 }
 
-export function ExplorePanel() {
+export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
   const [prefs, setPrefs] = useState<ExplorePrefs>({ minutes: 60, mood: 'nature', energy: 'easy' });
   const [stage, setStage] = useState<Stage>('setup');
   const [error, setError] = useState(false);
@@ -359,7 +359,7 @@ export function ExplorePanel() {
 
   return (
     // Phones: full-width bottom sheet. Larger screens: a floating panel on the left, like a desktop maps app.
-    <div className={PANEL_POSITION}>
+    <div className={`${PANEL_POSITION} ${hidden ? 'hidden' : ''}`}>
       <AnimatePresence mode="wait">
         {stage !== 'results' ? (
           <m.section
@@ -369,6 +369,7 @@ export function ExplorePanel() {
             className={PANEL_BODY}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink/15" aria-hidden="true" />
+            <MinimiseButton />
 
             {stage === 'setup' ? (
               <>
@@ -380,18 +381,24 @@ export function ExplorePanel() {
                 <LocationError />
                 <TasteHint />
 
-                <p className="mb-2 text-sm font-semibold text-ink/70">How long have you got?</p>
-                <Segmented id="time" options={TIMES} value={prefs.minutes} onChange={(minutes) => setPrefs({ ...prefs, minutes })} />
+                {/* Side by side on wider screens so the whole form fits without scrolling. */}
+                <div className="grid gap-4 sm:grid-cols-2 sm:gap-3">
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-ink/70">How long have you got?</p>
+                    <Segmented id="time" options={TIMES} value={prefs.minutes} onChange={(minutes) => setPrefs({ ...prefs, minutes })} />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-ink/70">Energy</p>
+                    <Segmented id="energy" options={ENERGIES} value={prefs.energy} onChange={(energy) => setPrefs({ ...prefs, energy })} />
+                  </div>
+                </div>
 
                 <p className="mt-4 mb-2 text-sm font-semibold text-ink/70">What's the mood?</p>
-                <div role="radiogroup" className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 py-1 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
+                <div role="radiogroup" className="grid grid-cols-5 gap-1.5 py-1 sm:gap-2.5">
                   {MOODS.map((mood) => (
                     <MoodTile key={mood} mood={mood} active={prefs.mood === mood} onClick={() => setPrefs({ ...prefs, mood })} />
                   ))}
                 </div>
-
-                <p className="mt-4 mb-2 text-sm font-semibold text-ink/70">Energy</p>
-                <Segmented id="energy" options={ENERGIES} value={prefs.energy} onChange={(energy) => setPrefs({ ...prefs, energy })} />
 
                 {error && (
                   <p role="alert" className="mt-3 rounded-xl bg-ember/10 px-3 py-2 text-sm font-medium text-ember">
@@ -441,7 +448,7 @@ export function ExplorePanel() {
             )}
           </m.section>
         ) : (
-          <m.section key="results" {...sheetMotion} aria-label="Places to go" className="md:flex md:min-h-0 md:flex-col">
+          <m.section key="results" {...sheetMotion} aria-label="Places to go">
             <div className="mx-3 mb-2.5 flex items-center justify-between gap-2 rounded-2xl bg-cream/90 py-2 pr-2 pl-3.5 shadow-float backdrop-blur-xl">
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-forest">{summary}</p>
@@ -450,6 +457,9 @@ export function ExplorePanel() {
               <button type="button" onClick={edit} className="flex shrink-0 items-center gap-1.5 rounded-xl bg-mist px-3 py-2 text-sm font-semibold text-forest">
                 <SlidersHorizontal size={15} aria-hidden="true" /> Change
               </button>
+              <div className="relative size-8 shrink-0 [&>button]:static">
+                <MinimiseButton />
+              </div>
             </div>
 
             {result && result.cards.length === 0 ? (
@@ -468,7 +478,7 @@ export function ExplorePanel() {
                 </button>
               </div>
             ) : (
-              <ol ref={railRef} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1 md:min-h-0 md:flex-col md:snap-none md:overflow-x-visible md:overflow-y-auto">
+              <ol ref={railRef} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1">
                 {result?.cards.map((c, i) => (
                   <m.li
                     key={c.place.id + (result.source === 'gemma' ? '-g' : '-r')}
@@ -476,7 +486,7 @@ export function ExplorePanel() {
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.07, type: 'spring', stiffness: 400, damping: 32 }}
-                    className="w-[86%] max-w-sm shrink-0 snap-center md:w-full md:max-w-none"
+                    className="w-[86%] max-w-sm shrink-0 snap-center sm:w-[300px]"
                     onClick={() => {
                       select(c.place.id, 'list');
                       map?.easeTo({ center: [c.place.lon, c.place.lat], zoom: 15.5, padding: mapPadding(), duration: 700 });

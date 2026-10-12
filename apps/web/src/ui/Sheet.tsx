@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { m } from 'motion/react';
-import { X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
+import { useUiStore } from '../app/store/uiStore';
 
 export const sheetMotion = {
   initial: { y: 40, opacity: 0 },
@@ -10,21 +11,32 @@ export const sheetMotion = {
 } as const;
 
 /**
- * Where every panel sits: a bottom sheet above the tab bar on phones; on wider screens a sidebar
- * on the left that starts under the logo and uses the full height, so nothing is cut off on a
- * short laptop screen.
+ * Where every panel sits: just above the tab bar, full width on phones and centred on wider
+ * screens.
  */
 export const PANEL_POSITION =
-  'absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 md:top-[4.75rem] md:right-auto md:bottom-[5.5rem] md:left-1 md:flex md:w-[420px] md:flex-col';
+  'absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 sm:left-1/2 sm:right-auto sm:w-[600px] sm:max-w-[calc(100%-1rem)] sm:-translate-x-1/2';
 
-/** The panel body: capped at 70% height on phones, the sidebar's height on wider screens. */
-export const PANEL_BODY = 'mx-3 max-h-[70vh] overflow-y-auto rounded-[28px] bg-cream/95 px-4 pt-2 pb-4 shadow-sheet backdrop-blur-xl md:max-h-full md:min-h-0';
+/** The panel body, capped so the map stays visible above it. */
+export const PANEL_BODY = 'relative mx-3 max-h-[min(70vh,calc(100dvh-10rem))] overflow-y-auto rounded-[28px] bg-cream/95 px-4 pt-2 pb-4 shadow-sheet backdrop-blur-xl sm:px-5';
 
-/** True on screens where panels are a left sidebar (keep in step with the `md:` classes above). */
-export const isWide = () => window.matchMedia('(min-width: 768px)').matches;
+/** Map padding that keeps a point clear of the panel above the tab bar. */
+export const mapPadding = () => ({ top: 80, bottom: 280, left: 40, right: 40 });
 
-/** Map padding that keeps a point clear of whichever panel is showing. */
-export const mapPadding = () => (isWide() ? { top: 90, bottom: 110, left: 470, right: 60 } : { top: 80, bottom: 280, left: 40, right: 40 });
+/** Minimise the open panel back to just the map; tapping its tab opens it again. */
+export function MinimiseButton() {
+  return (
+    <button
+      type="button"
+      onClick={() => useUiStore.getState().closeTab()}
+      aria-label="Minimise"
+      title="Minimise"
+      className="absolute top-3 right-3 z-10 grid size-8 place-items-center rounded-full bg-mist text-ink/60 hover:text-ink"
+    >
+      <ChevronDown size={18} aria-hidden="true" />
+    </button>
+  );
+}
 
 export function Sheet({
   label,
@@ -45,13 +57,15 @@ export function Sheet({
       <m.section
         {...sheetMotion}
         aria-label={label}
-        className={`relative ${PANEL_BODY} ${className}`}
+        className={`${PANEL_BODY} ${className}`}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink/15" aria-hidden="true" />
-        {onClose && (
-          <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 grid size-8 place-items-center rounded-full bg-mist text-ink/60">
+        {onClose ? (
+          <button type="button" onClick={onClose} aria-label="Close" className="absolute top-3 right-3 z-10 grid size-8 place-items-center rounded-full bg-mist text-ink/60">
             <X size={16} aria-hidden="true" />
           </button>
+        ) : (
+          <MinimiseButton />
         )}
         {children}
       </m.section>

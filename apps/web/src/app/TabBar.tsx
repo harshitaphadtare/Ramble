@@ -10,7 +10,7 @@ const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: 'you', label: 'You', icon: Sprout },
 ];
 
-export function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
+export function TabBar({ tab, onChange }: { tab: Tab | null; onChange: (t: Tab) => void }) {
   return (
     <nav
       aria-label="Main"
@@ -24,8 +24,9 @@ export function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void
             type="button"
             onClick={() => onChange(id)}
             aria-current={active ? 'page' : undefined}
-            aria-label={label}
-            className="relative flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold"
+            aria-expanded={active}
+            title={active ? `Minimise ${label}` : label}
+            className="relative flex h-11 items-center gap-2 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap"
           >
             {active && (
               <m.span
@@ -35,7 +36,7 @@ export function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void
               />
             )}
             <Icon size={19} className={`relative ${active ? 'text-forest' : 'text-cream/70'}`} aria-hidden="true" />
-            {active && <span className="relative text-forest">{label}</span>}
+            <span className={`relative ${active ? 'text-forest' : 'text-cream/80'}`}>{label}</span>
           </button>
         );
       })}
