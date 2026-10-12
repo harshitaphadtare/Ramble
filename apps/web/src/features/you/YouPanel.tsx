@@ -10,6 +10,7 @@ import { KIND_STYLE, gradient } from '../../ui/visuals';
 import { JournalCard } from '../journal/JournalCard';
 import { AccountCard } from './AccountCard';
 import { WeeklyGoal } from './WeeklyGoal';
+import { MonthWrapped } from './MonthWrapped';
 import { setTelemetryOptOut, telemetryAvailable, telemetryOptedOut } from '../../lib/telemetry';
 import { personalizeOptedIn, setPersonalizeOptIn } from '../../lib/personalize/consent';
 import { useFeatures } from '../../app/store/featuresStore';
@@ -100,6 +101,8 @@ export function YouPanel() {
         <Stat icon={MapPin} value={places.length} label="places" />
         <Stat icon={Footprints} value={visits.length} label="visits" />
       </div>
+
+      <MonthWrapped />
 
       <div role="tablist" className="mb-3 grid grid-cols-2 gap-1 rounded-2xl bg-mist p-1">
         {(['places', 'journal'] as const).map((v) => (

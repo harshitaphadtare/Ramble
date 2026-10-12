@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import * as SunCalc from 'suncalc';
-import { Moon, Sunrise, Sunset, WifiOff } from 'lucide-react';
+import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSun, Moon, Snowflake, Sun, Sunrise, Sunset, WifiOff } from 'lucide-react';
 import { Logo } from '../ui/Logo';
+import { currentWeather, type Sky, type Weather } from '../lib/weather';
 import { useMapStore } from './store/mapStore';
+
+const SKY_ICON: Record<Sky, typeof Sun> = { clear: Sun, partly: CloudSun, cloudy: Cloud, fog: CloudFog, drizzle: CloudDrizzle, rain: CloudRain, snow: Snowflake, storm: CloudLightning };
+const SKY_TEXT: Record<Sky, string> = { clear: 'clear', partly: 'partly cloudy', cloudy: 'cloudy', fog: 'foggy', drizzle: 'drizzle', rain: 'rain', snow: 'snow', storm: 'thunderstorms' };
 
 const DEFAULT: [number, number] = [144.9631, -37.8136];
 
@@ -49,6 +53,17 @@ export function TopBar() {
   const light = lightStatus(where);
   const LightIcon = light.icon;
 
+  // Weather for roughly where you are (rounded to ~1 km, refreshed when you move that far).
+  const [weather, setWeather] = useState<Weather | null>(null);
+  const cell = `${where[1].toFixed(2)},${where[0].toFixed(2)}`;
+  useEffect(() => {
+    const ctl = new AbortController();
+    const [lat, lon] = cell.split(',').map(Number) as [number, number];
+    void currentWeather([lon, lat], ctl.signal).then((w) => !ctl.signal.aborted && setWeather(w));
+    return () => ctl.abort();
+  }, [cell, online]);
+  const SkyIcon = weather ? SKY_ICON[weather.sky] : null;
+
   return (
     <header className="pointer-events-none absolute inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex items-center justify-between gap-2">
       <div className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-cream/85 py-1.5 pr-3.5 pl-1.5 shadow-float backdrop-blur-xl">
@@ -59,6 +74,16 @@ export function TopBar() {
         {!online && (
           <span className="flex items-center gap-1 rounded-full bg-ink/80 px-2.5 py-1.5 text-xs font-semibold text-white shadow-float backdrop-blur-xl">
             <WifiOff size={13} aria-hidden="true" /> Offline
+          </span>
+        )}
+        {weather && SkyIcon && (
+          <span
+            title={`${weather.tempC}°C, ${SKY_TEXT[weather.sky]}${weather.rainPct >= 20 ? `, ${weather.rainPct}% chance of rain in the next hour` : ''}`}
+            className="flex items-center gap-1.5 rounded-full bg-cream/85 px-3 py-1.5 text-xs font-semibold text-ink/80 shadow-float backdrop-blur-xl"
+          >
+            <SkyIcon size={14} aria-hidden="true" />
+            {weather.tempC}°
+            {weather.rainPct >= 20 && <span className="text-[#3b82f6]">{weather.rainPct}%</span>}
           </span>
         )}
         <span

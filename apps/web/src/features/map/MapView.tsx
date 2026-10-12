@@ -9,6 +9,7 @@ import { useUiStore } from '../../app/store/uiStore';
 import { useUserStore } from '../../app/store/userStore';
 import { useWalkStore } from '../../app/store/walkStore';
 import type { LonLat } from '../../lib/geo/geo';
+import { fogGeoJSON } from '../../lib/geo/explored';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -19,6 +20,8 @@ const PINS = 'ramble-pins';
 const ME = 'ramble-me';
 const SAVED = 'ramble-saved';
 const ROUTE = 'ramble-route';
+const FOG = 'ramble-fog';
+const HEAT = 'ramble-heat';
 
 function pinsGeoJSON(pins: MapPin[], selectedId: string | null): FeatureCollection {
   return {
@@ -65,8 +68,35 @@ function savedGeoJSON(places: Place[], visits: Visit[]): FeatureCollection {
   };
 }
 
-/** Our own layers, bottom to top: saved places, the user's position, suggestion pins. */
+/** One heat point per visit at its place. */
+function heatGeoJSON(places: Place[], visits: Visit[]): FeatureCollection {
+  const byId = new Map(places.map((p) => [p.id, p]));
+  return {
+    type: 'FeatureCollection',
+    features: visits.flatMap((v) => {
+      const p = byId.get(v.placeId);
+      return p ? [{ type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: p.lonLat }, properties: {} }] : [];
+    }),
+  };
+}
+
+/** Our own layers, bottom to top: fog/heat, route, saved places, the user's position, suggestion pins. */
 function addRambleLayers(m: maplibregl.Map) {
+  m.addSource(FOG, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  m.addLayer({ id: `${FOG}-fill`, type: 'fill', source: FOG, layout: { visibility: 'none' }, paint: { 'fill-color': '#1d3a2a', 'fill-opacity': 0.42 } });
+  m.addSource(HEAT, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  m.addLayer({
+    id: `${HEAT}-layer`,
+    type: 'heatmap',
+    source: HEAT,
+    layout: { visibility: 'none' },
+    paint: {
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 18, 15, 40],
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 15, 1.6],
+      'heatmap-opacity': 0.85,
+      'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(249,192,106,0)', 0.2, '#f9c06a', 0.5, '#ee8a3f', 0.8, '#e8457a', 1, '#7357f6'],
+    },
+  });
   m.addSource(ROUTE, { type: 'geojson', data: routeGeoJSON(null) });
   m.addLayer({
     id: `${ROUTE}-casing`,
@@ -161,6 +191,8 @@ export function MapView() {
   const route = useWalkStore((s) => s.route);
   const backRoute = useWalkStore((s) => s.backRoute);
   const visits = useUserStore((s) => s.visits);
+  const mapLayer = useUiStore((s) => s.mapLayer);
+  const fogCentre = useUiStore((s) => s.fogCentre);
 
   useEffect(() => {
     if (!container.current) return;
@@ -202,6 +234,18 @@ export function MapView() {
   useEffect(() => {
     (map?.getSource(SAVED) as maplibregl.GeoJSONSource | undefined)?.setData(savedGeoJSON(places, visits));
   }, [map, places, visits]);
+
+  // Heat map / fog of war (Wander's map views), drawn only while switched on.
+  useEffect(() => {
+    if (!map) return;
+    map.setLayoutProperty(`${HEAT}-layer`, 'visibility', mapLayer === 'heat' ? 'visible' : 'none');
+    map.setLayoutProperty(`${FOG}-fill`, 'visibility', mapLayer === 'fog' ? 'visible' : 'none');
+    if (mapLayer === 'heat') (map.getSource(HEAT) as maplibregl.GeoJSONSource | undefined)?.setData(heatGeoJSON(places, visits));
+    if (mapLayer === 'fog') {
+      const c = map.getCenter();
+      (map.getSource(FOG) as maplibregl.GeoJSONSource | undefined)?.setData(fogGeoJSON(fogCentre ?? [c.lng, c.lat], places.filter((p) => visits.some((v) => v.placeId === p.id)).map((p) => p.lonLat)));
+    }
+  }, [map, mapLayer, places, visits, fogCentre]);
 
   useEffect(() => {
     (map?.getSource(ROUTE) as maplibregl.GeoJSONSource | undefined)?.setData(routeGeoJSON(route, backRoute));
