@@ -44,6 +44,19 @@ registerRoute(
 
 // The API is never cached by the service worker.
 
+// Tapping an arrival notification brings Ramble back to the front (or opens it).
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    (async () => {
+      const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const open = wins[0];
+      if (open) return open.focus();
+      return self.clients.openWindow('/');
+    })(),
+  );
+});
+
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') void self.skipWaiting();
 });

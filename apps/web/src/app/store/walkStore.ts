@@ -83,10 +83,19 @@ function targetAt(plan: TripPlan, home: LonLat, i: number): { target: WalkTarget
 /** "Since you're here…": a buzz, and a notification if Ramble is in the background and allowed. */
 function pingArrival(name: string) {
   navigator.vibrate?.([120, 60, 120]);
+  void notify(`You're at ${name}!`, 'Snap a few photos and add a note so you remember it.');
+}
+
+/**
+ * A system notification, sent through the service worker: phones (Android Chrome, iOS from the
+ * Home Screen) don't allow `new Notification()` from a page. Silent no-op if not allowed.
+ */
+export async function notify(title: string, body: string) {
   try {
-    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification(`You're at ${name}!`, { body: 'Snap a few photos and add a note so you remember it.', tag: 'ramble-arrival' });
-    }
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (reg) await reg.showNotification(title, { body, tag: 'ramble-arrival', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png' });
+    else if (document.hidden) new Notification(title, { body, tag: 'ramble-arrival' });
   } catch {
     /* notifications unavailable: the in-app banner still shows */
   }

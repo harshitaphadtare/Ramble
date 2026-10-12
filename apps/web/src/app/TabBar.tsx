@@ -14,7 +14,7 @@ export function TabBar({ tab, onChange }: { tab: Tab | null; onChange: (t: Tab) 
   return (
     <nav
       aria-label="Main"
-      className={`absolute left-1/2 z-20 flex -translate-x-1/2 gap-1 ${tab ? 'md:left-[calc((100%-420px)/2)]' : ''} rounded-full bg-forest-deep/95 p-1.5 shadow-float backdrop-blur-xl bottom-[max(0.75rem,env(safe-area-inset-bottom))]`}
+      className={`absolute left-1/2 z-20 flex -translate-x-1/2 gap-1 md:left-[calc(100%-214px)] rounded-full bg-forest-deep/95 p-1.5 shadow-float backdrop-blur-xl bottom-[max(0.75rem,env(safe-area-inset-bottom))]`}
     >
       {TABS.map(({ id, label, icon: Icon }) => {
         const active = tab === id;

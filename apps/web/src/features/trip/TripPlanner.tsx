@@ -42,9 +42,9 @@ function StopChooser({ stop, onChoose, autoOpen }: { stop: PlanStop; onChoose: (
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold ${stop.chosen ? 'bg-mist text-forest' : 'bg-sunset/15 text-[#b45309]'}`}
+        className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold whitespace-nowrap ${stop.chosen ? 'bg-mist text-forest' : 'bg-sunset/15 text-[#b45309]'}`}
       >
-        {stop.chosen ? `Change (${stop.options.length} options)` : `Choose which one · ${stop.options.length} options`}
+        {stop.chosen ? `Change · ${stop.options.length} options` : `Pick one of ${stop.options.length}`}
         <ChevronDown size={13} className={open ? 'rotate-180' : ''} aria-hidden="true" />
       </button>
       {open && (

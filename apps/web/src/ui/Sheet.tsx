@@ -13,12 +13,13 @@ export const sheetMotion = {
 /**
  * Where every panel sits.
  * - Phones (and small tablets): a sheet above the tab bar, map on top.
- * - Laptops (md+): a full-height sidebar on the right, so the map on the left stays clear for
- *   routes and pins. Keep SIDEBAR_PX in step with the md:w-[420px] here.
+ * - Laptops (md+): a sidebar on the right with the menu docked under it (TabBar), so the map on
+ *   the left stays clear for routes and pins. Keep SIDEBAR_PX in step with the md:w-[420px] here
+ *   and with TabBar's md:left (sidebar centre).
  */
 export const SIDEBAR_PX = 420;
 export const PANEL_POSITION =
-  'absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 sm:left-1/2 sm:right-auto sm:w-[600px] sm:max-w-[calc(100%-1rem)] sm:-translate-x-1/2 md:top-[4.25rem] md:right-1 md:bottom-3 md:left-auto md:flex md:w-[420px] md:max-w-none md:translate-x-0 md:flex-col';
+  'absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 sm:left-1/2 sm:right-auto sm:w-[600px] sm:max-w-[calc(100%-1rem)] sm:-translate-x-1/2 md:top-[4.25rem] md:right-1 md:bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] md:left-auto md:flex md:w-[420px] md:max-w-none md:translate-x-0 md:flex-col md:justify-end';
 
 /** Same place; kept separate in case results ever need more room. */
 export const PANEL_POSITION_WIDE = PANEL_POSITION;

@@ -406,7 +406,7 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                   ))}
                 </div>
                 <div className="mb-4 flex items-end justify-between gap-3">
-                  <h2 className="font-display text-[28px] leading-[1.1] font-semibold tracking-tight text-forest">{mode === 'walk' ? 'Where to today?' : 'Where are you off to?'}</h2>
+                  <h2 className="font-display text-[26px] leading-[1.1] font-semibold tracking-tight text-forest">{mode === 'walk' ? 'Where to today?' : 'Where are you off to?'}</h2>
                   <LocationButton />
                 </div>
                 <LocationError />
