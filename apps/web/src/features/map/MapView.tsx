@@ -23,6 +23,9 @@ const SAVED = 'ramble-saved';
 const ROUTE = 'ramble-route';
 const FOG = 'ramble-fog';
 const HEAT = 'ramble-heat';
+const FOOD = 'ramble-food';
+/** OpenMapTiles POI classes shown with their icons (all exist in the OpenFreeMap sprite). */
+const FOOD_CLASSES = ['cafe', 'restaurant', 'fast_food', 'bakery', 'bar', 'beer', 'ice_cream'];
 
 function pinsGeoJSON(pins: MapPin[], selectedId: string | null): FeatureCollection {
   return {
@@ -94,6 +97,34 @@ function heatGeoJSON(places: Place[], visits: Visit[]): FeatureCollection {
 
 /** Our own layers, bottom to top: fog/heat, route, saved places, the user's position, suggestion pins. */
 function addRambleLayers(m: maplibregl.Map) {
+  // Food and drink stops (cafés, restaurants, bakeries…), from the map's own OSM data. The base
+  // style only shows the few "top-ranked" ones until zoom 17; for planning a trip you want them
+  // all from street-block zoom. Icons come from the style's own sprite; names from zoom 16.
+  if (m.getSource('openmaptiles')) {
+    m.addLayer({
+      id: FOOD,
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      minzoom: 14.5,
+      filter: ['all', ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false], ['has', 'name'], ['match', ['get', 'class'], FOOD_CLASSES, true, false]],
+      layout: {
+        // Pubs are class "beer", which has no icon of its own: use the bar glass.
+        'icon-image': ['coalesce', ['image', ['get', 'class']], ['image', 'bar']],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 14.5, 0.8, 17, 1],
+        'icon-allow-overlap': false,
+        'symbol-sort-key': ['get', 'rank'],
+        'text-field': ['step', ['zoom'], '', 16, ['get', 'name']],
+        'text-font': ['Noto Sans Regular'],
+        'text-size': 11,
+        'text-offset': [0, 1.1],
+        'text-anchor': 'top',
+        'text-optional': true,
+        'text-max-width': 8,
+      },
+      paint: { 'text-color': '#8a4b14', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
+    });
+  }
   m.addSource(FOG, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   m.addLayer({ id: `${FOG}-fill`, type: 'fill', source: FOG, layout: { visibility: 'none' }, paint: { 'fill-color': '#1d3a2a', 'fill-opacity': 0.42 } });
   m.addSource(HEAT, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
