@@ -1,7 +1,17 @@
 import { create } from 'zustand';
+import type { PlaceKind } from '@ramble/shared';
 
 /** App-wide UI state that isn't map or user data: which sheet is open, toasts. */
 export type Tab = 'explore' | 'checkin' | 'you';
+
+export interface MapPick {
+  id: string;
+  name: string;
+  /** What OSM calls it ("cafe", "park"), for display. */
+  type: string;
+  kind: PlaceKind;
+  lonLat: [number, number];
+}
 
 interface Toast {
   key: number;
@@ -16,6 +26,10 @@ interface UiState {
   /** The journal composer, opened right after a check-in or from a place. */
   composer: { placeId?: string; visitId?: string; entryId?: string } | null;
   toast: Toast | null;
+  /** A place tapped on the map itself (a café, a park…), shown in a small card. */
+  mapPick: MapPick | null;
+  /** Explore's two modes. */
+  exploreMode: 'walk' | 'trip';
   /** Set when a new version of Ramble is ready; calling it reloads into it. */
   applyUpdate: (() => void) | null;
   /** Extra map view from Wander: where you go most (heat), or what you haven't explored (fog). */
@@ -37,6 +51,8 @@ export const useUiStore = create<UiState>((set) => ({
   composer: null,
   toast: null,
   applyUpdate: null,
+  mapPick: null,
+  exploreMode: 'walk',
   mapLayer: 'none',
   fogCentre: null,
   setMapLayer: (mapLayer, fogCentre = null) => set({ mapLayer, fogCentre }),

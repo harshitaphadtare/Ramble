@@ -9,6 +9,7 @@ import type { LonLat } from '../../lib/geo/geo';
 import { MODE_LABEL, type TravelMode } from '../../lib/geo/route';
 import { distanceM } from '../../lib/geo/geo';
 import { mapPadding } from '../../ui/Sheet';
+import { fromFound, useTripDraft, type PlanStop } from './tripDraft';
 import { searchPlaces, stopOptions, type FoundPlace } from '../../lib/places/search';
 
 const MODES: TravelMode[] = ['walk', 'bike', 'car'];
@@ -17,19 +18,6 @@ const EXAMPLE = "I'm going to St Kilda today. On the way I want a coffee and fis
 const lerp = (a: LonLat, b: LonLat, t: number): LonLat => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 const fmtKm = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
 
-/** A stop in the planner: what you asked for, the real places that match, and which one you chose. */
-type PlanStop = TripStop & {
-  /** What you asked for ("coffee", "Comm Bank"), when Gemma planned it. */
-  asked?: string;
-  /** Real places that match, best first; you choose one. */
-  options?: FoundPlace[];
-  /** Where on the way this stop fits (to show how far each option is from it). */
-  near?: LonLat;
-  /** False until you've picked from the options: Ramble doesn't guess for you. */
-  chosen: boolean;
-};
-
-const fromFound = (f: FoundPlace, leg: TripStop['leg']): TripStop => ({ name: f.name, kind: f.kind, lonLat: f.lonLat, sourceId: f.id, leg });
 
 function StopChooser({ stop, onChoose, autoOpen }: { stop: PlanStop; onChoose: (f: FoundPlace) => void; autoOpen: boolean }) {
   // The first stop still to choose opens by itself; after that it's up to you.
@@ -104,7 +92,8 @@ function ModePicker({ value, onChange, label, showLabel = true }: { value: Trave
 /** Plan a trip: say it in your own words (Gemma), or add stops by hand; optionally plan the way back. */
 export function TripPlanner() {
   const [text, setText] = useState('');
-  const [stops, setStops] = useState<PlanStop[]>([]);
+  const stops = useTripDraft((s) => s.stops);
+  const setStops = useTripDraft((s) => s.setStops);
   const userPos = useMapStore((s) => s.userPos);
   const [mode, setMode] = useState<TravelMode>('walk');
   const [roundTrip, setRoundTrip] = useState(true);
@@ -228,14 +217,7 @@ export function TripPlanner() {
   }
 
   function addStop(f: FoundPlace) {
-    // The first place you add is where you're going; later ones are stops on the way there
-    // (just before the destination). Move them or switch them to the way back from the list.
-    setStops((prev) => {
-      const s: PlanStop = { ...fromFound(f, 'out'), chosen: true };
-      const dest = prev.map((p) => p.leg).lastIndexOf('out');
-      if (dest < 0) return [s, ...prev];
-      return [...prev.slice(0, dest), s, ...prev.slice(dest)];
-    });
+    useTripDraft.getState().add(f);
     setQuery('');
     setResults([]);
   }

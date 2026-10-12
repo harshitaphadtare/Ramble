@@ -69,6 +69,17 @@ function savedGeoJSON(places: Place[], visits: Visit[]): FeatureCollection {
   };
 }
 
+/** Map POI type → Ramble's place kinds (cafés and shops are "other"). */
+function kindForPoi(type: string): Place['kind'] {
+  if (/park/.test(type)) return 'park';
+  if (/garden/.test(type)) return 'garden';
+  if (/beach/.test(type)) return 'beach';
+  if (/viewpoint/.test(type)) return 'viewpoint';
+  if (/picnic/.test(type)) return 'picnic';
+  if (/reserve/.test(type)) return 'reserve';
+  return 'other';
+}
+
 /** One heat point per visit at its place. */
 function heatGeoJSON(places: Place[], visits: Visit[]): FeatureCollection {
   const byId = new Map(places.map((p) => [p.id, p]));
@@ -216,6 +227,8 @@ export function MapView() {
       container.current?.querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show');
       addRambleLayers(m);
       setMap(m);
+      // Dev only (stripped from production builds): lets tests drive the map.
+      if (import.meta.env.DEV) (window as unknown as { __rambleMap?: maplibregl.Map }).__rambleMap = m;
     });
 
     return () => {
@@ -275,6 +288,33 @@ export function MapView() {
     map.on('click', `${SAVED}-dot`, onClick);
     return () => {
       map.off('click', `${SAVED}-dot`, onClick);
+    };
+  }, [map]);
+
+  // Tapping a place the map itself shows (café, bakery, park…) opens a small card for it.
+  // Our own pins and saved places take priority (handled above).
+  useEffect(() => {
+    if (!map) return;
+    const poiLayers = () => (map.getStyle()?.layers ?? []).filter((l) => 'source-layer' in l && l['source-layer'] === 'poi').map((l) => l.id);
+    const onClick = (e: maplibregl.MapMouseEvent) => {
+      const ours = map.queryRenderedFeatures(e.point, { layers: [`${PINS}-circle`, `${SAVED}-dot`] });
+      if (ours.length) return;
+      const f = map.queryRenderedFeatures(e.point, { layers: poiLayers() }).find((x) => typeof x.properties?.name === 'string' && x.geometry.type === 'Point');
+      if (!f || f.geometry.type !== 'Point') return useUiStore.setState({ mapPick: null });
+      const [lon, lat] = f.geometry.coordinates as [number, number];
+      const type = String(f.properties.subclass ?? f.properties.class ?? 'place').replace(/_/g, ' ');
+      useUiStore.setState({
+        mapPick: { id: `tile:${f.id ?? `${lon.toFixed(5)},${lat.toFixed(5)}`}`, name: String(f.properties.name).slice(0, 80), type, kind: kindForPoi(type), lonLat: [lon, lat] },
+      });
+    };
+    const pointer = (e: maplibregl.MapMouseEvent) => {
+      map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: poiLayers() }).length ? 'pointer' : '';
+    };
+    map.on('click', onClick);
+    map.on('mousemove', pointer);
+    return () => {
+      map.off('click', onClick);
+      map.off('mousemove', pointer);
     };
   }, [map]);
 

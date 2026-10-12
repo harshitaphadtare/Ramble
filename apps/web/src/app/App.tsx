@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AnimatePresence, LazyMotion, domMax } from 'motion/react';
 import { MapView } from '../features/map/MapView';
 import { MapLayers } from '../features/map/MapLayers';
+import { MapPickCard } from '../features/map/MapPickCard';
 import { ExplorePanel } from '../features/explore/ExplorePanel';
 import { CheckInPanel } from '../features/checkin/CheckInPanel';
 import { YouPanel } from '../features/you/YouPanel';
@@ -45,6 +46,7 @@ export function App() {
         <MapView />
         <TopBar />
         <MapLayers />
+        <MapPickCard />
         <WalkBanner />
         {status === 'error' && (
           <p role="alert" className="absolute inset-x-3 top-20 z-40 rounded-2xl bg-ember px-4 py-3 text-sm font-semibold text-white shadow-float">

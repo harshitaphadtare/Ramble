@@ -250,7 +250,9 @@ function TasteHint() {
 
 export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
   const [prefs, setPrefs] = useState<ExplorePrefs>({ minutes: 60, mood: 'nature', energy: 'easy' });
-  const [mode, setMode] = useState<'walk' | 'trip'>('walk');
+  // In the UI store so "Add to trip" from the map can switch Explore to the planner.
+  const mode = useUiStore((s) => s.exploreMode);
+  const setMode = (exploreMode: 'walk' | 'trip') => useUiStore.setState({ exploreMode });
   const [customTime, setCustomTime] = useState(false);
   const [stage, setStage] = useState<Stage>('setup');
   const [error, setError] = useState(false);
@@ -261,7 +263,6 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
   const { map, userPos, setPins, select, selectedId, selectedBy } = useMapStore();
 
   useEffect(() => () => abortRef.current?.abort(), []);
-
   // Reopening Explore after a walk: put the picks back on the map (the walk showed only its stops).
   useEffect(() => {
     if (hidden || stage !== 'results' || !result || useWalkStore.getState().status !== 'idle') return;
