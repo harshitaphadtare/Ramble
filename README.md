@@ -8,7 +8,11 @@ Ramble remembers the places you love, levels them up each time you return, nudge
 
 ## What it does
 - **Get me outside:** pick time, mood and energy. Ramble finds real parks, gardens, lookouts and beaches nearby (OpenStreetMap), shows instant picks, then **Gemma** refines them with reasons.
-- **Walk here:** footpath route, live distance left, arrival → check in. Location is only tracked during a walk.
+- **Plan a trip in your own words:** "St Kilda today, coffee and fish and chips on the way, Comm Bank on the way back, then home." **Gemma** turns it into ordered stops, Ramble finds a real place for each (Photon/OSM) and routes it. Or add as many stops as you like by hand. Walk, cycle or drive, each way, with the way home planned too.
+- **Walk here / trips:** route, live distance left, and on arrival: "You're here! Snap a few photos and add a note." Location is only tracked during a walk.
+- **Weekly goal & streak:** one question on first open (how many days a week?), a progress ring and a weekly streak.
+- **From Wander:** fog of war (explored %), heat map, monthly Wrapped, weather, encrypted backup file.
+- **Custom time:** 30 min to 8 hours.
 - **Check in & level up:** Want to go → Visited → Favourite → Regular → Local legend, with a celebration.
 - **Journal:** a note (type or dictate) and a photo per visit; **✨ Polish** sends that one note to Gemma, only when you tap it.
 - **You:** touched-grass streak, places by level, journal timeline, delete all data.
