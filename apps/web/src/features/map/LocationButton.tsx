@@ -1,7 +1,7 @@
 import { LoaderCircle, LocateFixed } from 'lucide-react';
 import { useMapStore } from '../../app/store/mapStore';
 
-/** "Use my location" pill: the only place Ramble asks for the user's position. */
+/** "Use my location" pill: asks again (Ramble also asks once when it opens). */
 export function LocationButton() {
   const status = useMapStore((s) => s.locateStatus);
   const locate = useMapStore((s) => s.locate);

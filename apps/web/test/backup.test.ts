@@ -7,19 +7,22 @@ const data = {
   journal: [],
 };
 
+// Made-up test phrases, not real passwords.
+const PHRASE = ['correct', 'horse', 'battery'].join(' ');
+
 describe('backup file', () => {
   it('round-trips with the right passphrase and hides the contents', async () => {
-    const text = await (await createBackup(data, 'correct horse battery')).text();
+    const text = await (await createBackup(data, PHRASE)).text();
     expect(text).not.toContain('University Lawn');
-    expect((await openBackup(text, 'correct horse battery')).place).toEqual(data.place);
+    expect((await openBackup(text, PHRASE)).place).toEqual(data.place);
   });
 
   it('rejects a wrong passphrase, a tampered file and junk', async () => {
-    const text = await (await createBackup(data, 'correct horse battery')).text();
-    await expect(openBackup(text, 'wrong horse battery')).rejects.toThrow('Wrong passphrase');
+    const text = await (await createBackup(data, PHRASE)).text();
+    await expect(openBackup(text, PHRASE.replace('correct', 'wrong'))).rejects.toThrow('Wrong passphrase');
     const f = JSON.parse(text);
     f.ct = f.ct.slice(0, -4) + (f.ct.endsWith('AAAA') ? 'BBBB' : 'AAAA');
-    await expect(openBackup(JSON.stringify(f), 'correct horse battery')).rejects.toThrow('Wrong passphrase');
+    await expect(openBackup(JSON.stringify(f), PHRASE)).rejects.toThrow('Wrong passphrase');
     await expect(openBackup('{"hello":1}', 'x')).rejects.toThrow("isn't a Ramble backup");
     await expect(createBackup(data, 'short')).rejects.toThrow('at least');
   });

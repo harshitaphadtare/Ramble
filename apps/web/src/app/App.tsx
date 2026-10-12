@@ -15,6 +15,7 @@ import { TopBar } from './TopBar';
 import { TabBar } from './TabBar';
 import { UpdateBar } from './UpdateBar';
 import { useUiStore } from './store/uiStore';
+import { useMapStore } from './store/mapStore';
 import { useUserStore } from './store/userStore';
 import { useFeatures } from './store/featuresStore';
 import { initTelemetry } from '../lib/telemetry';
@@ -23,6 +24,13 @@ export function App() {
   const tab = useUiStore((s) => s.tab);
   const setTab = useUiStore((s) => s.setTab);
   const status = useUserStore((s) => s.status);
+  const map = useMapStore((s) => s.map);
+
+  // Find the user as soon as the map is ready, so plans and picks start from where they are.
+  // (One position, kept on the device; continuous tracking only happens during a trip.)
+  useEffect(() => {
+    if (map && useMapStore.getState().locateStatus === 'idle') void useMapStore.getState().locate();
+  }, [map]);
 
   // Unlock the encrypted on-device store and learn which optional features are on, once at start-up.
   useEffect(() => {

@@ -126,23 +126,23 @@ export async function searchPlaces(query: string, near: LonLat, opts: { category
   return out;
 }
 
-/** The best match for a stop: the closest result to where it should be on the way. */
-export async function findStop(query: string, near: LonLat, category: StopCategory | null, signal?: AbortSignal): Promise<FoundPlace | null> {
-  // "fish and chips" might not be in the nearest shop's name: also look for any place of that
-  // category nearby, and take whichever fits the route best.
+/**
+ * Real options for a stop, best first, for the user to choose from (nothing is picked silently).
+ * Named places ("St Kilda"): Photon's ranking, already biased to here. Kinds of place ("coffee",
+ * "Comm Bank" when there are many): closest to where the stop fits on the way, name matches first.
+ */
+export async function stopOptions(query: string, near: LonLat, category: StopCategory | null, signal?: AbortSignal): Promise<FoundPlace[]> {
+  // "fish and chips" might not be in the nearest shop's name: also look for any place of that kind.
   const [named, anyOfKind] = await Promise.all([
     searchPlaces(query, near, { category, limit: 10, signal }),
     category ? searchPlaces(CATEGORY_WORD[category], near, { category, limit: 10, signal }).catch(() => []) : Promise.resolve([]),
   ]);
-  const results = [...named, ...anyOfKind];
-  if (!results.length) return null;
-  // A named place ("St Kilda", "Comm Bank Bourke St"): trust Photon's ranking (already biased to
-  // here). A kind of place ("coffee"): the closest one to where it fits on the way.
-  if (!category) return results[0]!;
-  // Prefer a real name match unless it's much further away than the nearest of that kind.
-  const nearest = (list: FoundPlace[]) => list.reduce((best, r) => (distanceM(r.lonLat, near) < distanceM(best.lonLat, near) ? r : best));
-  const bestNamed = named.length ? nearest(named) : null;
-  const bestAny = anyOfKind.length ? nearest(anyOfKind) : null;
-  if (bestNamed && (!bestAny || distanceM(bestNamed.lonLat, near) < distanceM(bestAny.lonLat, near) + 800)) return bestNamed;
-  return bestAny ?? bestNamed;
+  if (!category) return named.slice(0, 6);
+  const byDistance = (list: FoundPlace[]) => [...list].sort((a, b) => distanceM(a.lonLat, near) - distanceM(b.lonLat, near));
+  const seen = new Set<string>();
+  return [...byDistance(named), ...byDistance(anyOfKind)].filter((p) => !seen.has(p.id) && seen.add(p.id)).slice(0, 6);
+}
+
+export async function findStop(query: string, near: LonLat, category: StopCategory | null, signal?: AbortSignal): Promise<FoundPlace | null> {
+  return (await stopOptions(query, near, category, signal))[0] ?? null;
 }

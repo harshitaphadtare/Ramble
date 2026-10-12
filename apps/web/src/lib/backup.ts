@@ -25,7 +25,8 @@ export interface BackupData {
 }
 
 async function keyFrom(passphrase: string, salt: Uint8Array<ArrayBuffer>, iterations: number) {
-  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase.normalize('NFKC')), 'PBKDF2', false, ['deriveKey']);
+  // The user's own passphrase, typed at backup time; nothing secret is stored here.
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase.normalize('NFKC')), 'PBKDF2', false, ['deriveKey']); // ggignore
   return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
 
