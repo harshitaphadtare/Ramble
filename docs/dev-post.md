@@ -48,8 +48,8 @@ Suggested flow: open link → Find my walk → Gemma's picks with reasons → pl
 
 **Try it in 60 seconds:**
 1. Open the link and allow location (or just pan the map; it works without it).
-2. Tap **Find my walk** and pick *60 min · views · easy*. Three picks appear instantly, then Gemma's reasons replace them.
-3. Switch to **Trip** and type your plan in a sentence.
+2. Open **Explore → Find a walk** and pick *1 hour · Views · Steady*. Three picks appear instantly, then Gemma's reasons replace them.
+3. Switch to **Plan a trip** and type your plan in a sentence, then tap **Plan it with Gemma**.
 4. Tap any café or park on the map and choose **Add to trip**.
 
 ### Taking it outside
