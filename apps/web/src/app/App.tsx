@@ -9,6 +9,7 @@ import { MemoryComposer } from '../features/journal/MemoryComposer';
 import { Celebration } from '../ui/Celebration';
 import { Toast } from '../ui/Toast';
 import { WalkBanner } from '../features/walk/WalkBanner';
+import { Welcome } from '../features/you/Welcome';
 import { TopBar } from './TopBar';
 import { TabBar } from './TabBar';
 import { useUiStore } from './store/uiStore';
@@ -50,6 +51,7 @@ export function App() {
         <TabBar tab={tab} onChange={setTab} />
         <Toast />
         <Celebration />
+        <Welcome />
       </div>
     </LazyMotion>
   );

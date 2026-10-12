@@ -9,6 +9,7 @@ import { Eyebrow, Sheet, Title } from '../../ui/Sheet';
 import { KIND_STYLE, gradient } from '../../ui/visuals';
 import { JournalCard } from '../journal/JournalCard';
 import { AccountCard } from './AccountCard';
+import { WeeklyGoal } from './WeeklyGoal';
 import { setTelemetryOptOut, telemetryAvailable, telemetryOptedOut } from '../../lib/telemetry';
 import { personalizeOptedIn, setPersonalizeOptIn } from '../../lib/personalize/consent';
 import { useFeatures } from '../../app/store/featuresStore';
@@ -92,8 +93,10 @@ export function YouPanel() {
       <Eyebrow>Your map</Eyebrow>
       <Title className="mb-3">Out and about</Title>
 
+      <WeeklyGoal />
+
       <div className="mb-4 grid grid-cols-3 gap-2">
-        <Stat icon={Flame} value={streak} label={streak === 1 ? 'week streak' : 'weeks streak'} accent />
+        <Stat icon={Flame} value={streak} label={streak === 1 ? 'week outside' : 'weeks outside'} accent />
         <Stat icon={MapPin} value={places.length} label="places" />
         <Stat icon={Footprints} value={visits.length} label="visits" />
       </div>

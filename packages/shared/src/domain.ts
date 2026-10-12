@@ -87,6 +87,37 @@ export function weekKey(t: number): string {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
+/** Days out per week: several check-ins on the same day count once. */
+export function daysOutByWeek(visitTimes: number[]): Map<string, number> {
+  const days = new Map<string, Set<string>>();
+  for (const t of visitTimes) {
+    const d = new Date(t);
+    const wk = weekKey(t);
+    if (!days.has(wk)) days.set(wk, new Set());
+    days.get(wk)!.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+  }
+  return new Map([...days].map(([wk, s]) => [wk, s.size]));
+}
+
+/**
+ * Your weekly goal ("get outside N days a week"): progress this week, and how many weeks in a
+ * row you've hit it. This week only counts towards the streak once it's met, so the streak
+ * isn't broken on a Monday just because the week has barely started.
+ */
+export function weeklyGoalProgress(visitTimes: number[], goal: number, now = Date.now()): { thisWeek: number; streak: number; met: boolean } {
+  const byWeek = daysOutByWeek(visitTimes);
+  const WEEK = 7 * 86_400_000;
+  const thisWeek = byWeek.get(weekKey(now)) ?? 0;
+  const met = thisWeek >= goal;
+  let cursor = met ? now : now - WEEK;
+  let streak = 0;
+  while ((byWeek.get(weekKey(cursor)) ?? 0) >= goal) {
+    streak++;
+    cursor -= WEEK;
+  }
+  return { thisWeek, streak, met };
+}
+
 /** Consecutive weeks (ending this week or last week) with at least one visit. */
 export function touchedGrassStreak(visitTimes: number[], now = Date.now()): number {
   const weeks = new Set(visitTimes.map(weekKey));

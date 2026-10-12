@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { levelFor, touchedGrassStreak, weekKey } from '../src/domain';
+import { levelFor, touchedGrassStreak, weekKey, weeklyGoalProgress } from '../src/domain';
+
+describe('weekly goal', () => {
+  const day = (iso: string, h = 10) => new Date(`${iso}T${String(h).padStart(2, '0')}:00:00`).getTime();
+  // Wed 14 Oct 2026; the weeks before start Mon 5 Oct and Mon 28 Sep.
+  const now = day('2026-10-14', 18);
+
+  it('counts days out (not check-ins) and weeks in a row that hit the goal', () => {
+    const visits = [day('2026-09-28'), day('2026-09-30'), day('2026-10-05'), day('2026-10-05', 15), day('2026-10-07'), day('2026-10-13')];
+    // This week: 1 of 2 so far, which doesn't break the streak: the last two weeks both hit 2.
+    expect(weeklyGoalProgress(visits, 2, now)).toEqual({ thisWeek: 1, streak: 2, met: false });
+    // Hitting it this week extends the streak.
+    expect(weeklyGoalProgress([...visits, day('2026-10-14')], 2, now)).toEqual({ thisWeek: 2, streak: 3, met: true });
+    // Two check-ins on one day are one day out, so last week (5 Oct twice + 7 Oct) still only has 2.
+    expect(weeklyGoalProgress(visits, 3, now).streak).toBe(0);
+  });
+});
 
 describe('levels', () => {
   it('derives the level and what is next from the visit count', () => {
