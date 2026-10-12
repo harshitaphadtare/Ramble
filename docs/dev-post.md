@@ -2,7 +2,7 @@
 title: I Built a Map That Remembers Where I Love to Ramble (and Nudges Me Outside)
 published: false
 tags: devchallenge, hf26challenge, ai, opensource
-# cover_image: <upload a screenshot of the map with Gemma's picks, then paste its URL here>
+# cover_image: ✏️ use a LANDSCAPE photo from your 10 Oct walk (DEV crops covers to a wide strip, so phone screenshots look bad here)
 ---
 
 *This is a submission for the [Hacktoberfest Open-Source AI Challenge: Week 1](https://dev.to/challenges/hacktoberfest-week1-2026-10-05) — "Touch Grass".*
@@ -24,6 +24,9 @@ That place has become my spot. Whenever things feel like too much, I pack my lun
 
 Every return visit levels a place up: **Want to go → Visited → Favourite → Regular → Local legend.** Each check-in can carry a short note and a photo, so over time Ramble becomes a private journal of the places that are *yours*.
 
+![Level up: Visited, Coffee Cart, 1 visit](https://raw.githubusercontent.com/harshitaphadtare/Ramble/main/docs/screenshots/level-up.jpg)
+*Arriving at the coffee stop: first visit, first level.*
+
 - **Get me outside:** time, mood and energy → nearby places from OpenStreetMap → instant picks, refined by Gemma with a reason for each.
 - **Plan a trip in your own words:** *"St Kilda today, coffee and fish and chips on the way, Comm Bank on the way back."* Gemma turns it into stops, you choose a real place for each, and Ramble routes it there and back. You can walk, cycle or drive.
 - **Walk here:** footpath route and live distance left, and a ping when you arrive. Location is only used during a walk.
@@ -43,8 +46,6 @@ The screen is meant to be the shortest part of the experience: one minute to cho
 <!-- ✏️ VIDEO (~2 min). Paste on its own line:  {% embed https://youtu.be/XXXX %}
 Suggested flow: open link → Find my walk → Gemma's picks with reasons → plan a trip in a sentence → choose stops → Walk here → arrival ping → check in, level-up → note → ✨ Polish → airplane mode: map and journal still work → You tab (goal ring, fog of war, Wrapped). -->
 
-<!-- ✏️ SCREENSHOTS (3–5): Gemma's picks with reasons · a trip planned from a sentence · a level-up · a journal entry before/after Polish · fog of war -->
-
 **Try it in 60 seconds:**
 1. Open the link and allow location (or just pan the map; it works without it).
 2. Tap **Find my walk** and pick *60 min · views · easy*. Three picks appear instantly, then Gemma's reasons replace them.
@@ -61,7 +62,17 @@ On Saturday 10 October I took Ramble out for real, all the way from home to St K
 
 Out there, phone in hand, I realised something I hadn't noticed at my desk: a real outing is almost never one destination. I wanted to stop at places along the way, and Ramble could only take me to one. So when I got back, I built the trip planner. Now you can describe your outing in a sentence, add as many stops as you like, and Ramble routes the whole thing there and back.
 
+![A walking trip from Melbourne to Point Ormond with a coffee stop](https://raw.githubusercontent.com/harshitaphadtare/Ramble/main/docs/screenshots/trip-to-point-ormond.jpg)
+*Planning the walk to Point Ormond, with a coffee stop on the way.*
+
 The second thing I noticed was that I'd taken lots of photos that day, but none of them made it into Ramble. The journal was already there; I just never opened it, because nothing reminded me to. So now, when you reach a stop, Ramble pings you: *"You're here! Snap a few photos and add a note so you remember this place."* One tap checks you in and opens the journal, so the memory gets saved while you're still standing there.
+
+![My quick note before Polish](https://raw.githubusercontent.com/harshitaphadtare/Ramble/main/docs/screenshots/journal-before-polish.jpg)
+![The same note after Polish, with a title and tags](https://raw.githubusercontent.com/harshitaphadtare/Ramble/main/docs/screenshots/journal-after-polish.jpg)
+*My quick note, then ✨ Polish: same meaning, tidier, tagged. Gemma only sees this note because I tapped the button.*
+
+![A place card with its saved memory](https://raw.githubusercontent.com/harshitaphadtare/Ramble/main/docs/screenshots/place-with-memory.jpg)
+*The memory lives on the place, ready for next time.*
 
 ## Code
 
@@ -75,6 +86,10 @@ MIT licensed. The README covers running it locally, and `docs/` has the full arc
 
 ### Gemma at the core: rules first, Gemma second
 Waiting on an AI to show *anything* is a bad way to get someone out the door. So Ramble ranks places instantly with simple rules (distance vs. your time, mood, energy, how many times you've been), shows those picks right away, and then **Gemma 4 (26B) on Cloudflare Workers AI** refines them and writes a one-line reason for each. Typical Gemma round-trip on the live site: about **2 seconds**.
+
+![Instant rule-based pick](https://raw.githubusercontent.com/harshitaphadtare/Ramble/main/docs/screenshots/explore-rules-first.jpg)
+![Gemma's refined pick with a reason](https://raw.githubusercontent.com/harshitaphadtare/Ramble/main/docs/screenshots/explore-gemma-pick.jpg)
+*First the instant pick from simple rules, then Gemma's pick with its reason, a couple of seconds later.*
 
 Gemma does four jobs in Ramble: picking walks, turning a sentence into a trip, polishing journal notes and summarising trail news. Treating model output as untrusted made every one of them robust:
 - The prompts live on the server, so the browser only ever sends data. For walks, Gemma sees a short candidate list (id, kind, name, distance, visit count), and never your location or journal.
