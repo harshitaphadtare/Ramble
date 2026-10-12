@@ -35,7 +35,7 @@ export function WalkBanner() {
           exit={{ y: -20, opacity: 0 }}
           role="status"
           aria-live="polite"
-          className="absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.5rem)] z-20 rounded-2xl bg-forest-deep/95 p-3 text-cream shadow-float backdrop-blur-xl md:right-auto md:w-[420px]"
+          className="absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.5rem)] z-20 rounded-2xl bg-forest-deep/95 p-3 text-cream shadow-float backdrop-blur-xl md:right-4 md:left-auto md:w-[380px]"
         >
           <div className="flex items-center gap-3">
             <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${status === 'arrived' ? 'bg-sunset' : 'bg-moss'}`}>

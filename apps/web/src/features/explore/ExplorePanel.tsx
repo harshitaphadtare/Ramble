@@ -13,6 +13,7 @@ import { LevelBadge } from '../../ui/Level';
 import { LocationButton, LocationError } from '../map/LocationButton';
 import type { LonLat } from '../../lib/geo/geo';
 import { KIND_STYLE, MOOD_STYLE, gradient } from '../../ui/visuals';
+import { PANEL_BODY, PANEL_POSITION, mapPadding, sheetMotion } from '../../ui/Sheet';
 import { explore, type ExploreCard, type ExplorePrefs, type ExploreResult } from './explore';
 
 const TIMES = [
@@ -28,13 +29,6 @@ const ENERGIES: { value: Energy; label: string }[] = [
 const LOADING_LINES = ['Scouting parks and lookouts…', 'Timing it with the light…', 'Asking Gemma for the best three…'];
 
 type Stage = 'setup' | 'loading' | 'results';
-
-const sheetMotion = {
-  initial: { y: 40, opacity: 0 },
-  animate: { y: 0, opacity: 1 },
-  exit: { y: 40, opacity: 0 },
-  transition: { type: 'spring', stiffness: 380, damping: 34 },
-} as const;
 
 function Segmented<T extends string | number>({
   id,
@@ -81,7 +75,7 @@ function MoodTile({ mood, active, onClick }: { mood: Mood; active: boolean; onCl
       aria-checked={active}
       onClick={onClick}
       whileTap={{ scale: 0.96 }}
-      className={`relative flex h-[104px] w-[112px] shrink-0 snap-start flex-col justify-between overflow-hidden rounded-2xl p-3 text-left text-white transition-shadow ${
+      className={`relative flex h-[104px] w-[112px] shrink-0 snap-start md:h-[84px] md:w-auto flex-col justify-between overflow-hidden rounded-2xl p-3 text-left text-white transition-shadow ${
         active ? 'shadow-float ring-2 ring-forest ring-offset-2 ring-offset-cream' : 'opacity-90'
       }`}
       style={{ background: gradient(s.from, s.to) }}
@@ -283,7 +277,7 @@ export function ExplorePanel() {
         const card = result.cards.find((c) => c.place.id === id);
         if (!card) return;
         select(card.place.id, 'list');
-        map?.easeTo({ center: [card.place.lon, card.place.lat], zoom: Math.max(map.getZoom(), 14.5), padding: { top: 80, bottom: 260, left: 0, right: 0 }, duration: 700 });
+        map?.easeTo({ center: [card.place.lon, card.place.lat], zoom: Math.max(map.getZoom(), 14.5), padding: mapPadding(), duration: 700 });
       },
       { root: rail, threshold: 0.75 },
     );
@@ -348,7 +342,7 @@ export function ExplorePanel() {
         [Math.min(...lons), Math.min(...lats)],
         [Math.max(...lons), Math.max(...lats)],
       ],
-      { padding: { top: 90, bottom: 280, left: 48, right: 48 }, maxZoom: 15.5, duration: 800 },
+      { padding: mapPadding(), maxZoom: 15.5, duration: 800 },
     );
   }
 
@@ -365,14 +359,14 @@ export function ExplorePanel() {
 
   return (
     // Phones: full-width bottom sheet. Larger screens: a floating panel on the left, like a desktop maps app.
-    <div className="absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 md:right-auto md:left-4 md:w-[420px]">
+    <div className={PANEL_POSITION}>
       <AnimatePresence mode="wait">
         {stage !== 'results' ? (
           <m.section
             key="sheet"
             {...sheetMotion}
             aria-label="Get me outside"
-            className="mx-3 max-h-[68vh] overflow-y-auto rounded-[28px] bg-cream/95 px-4 pt-2 pb-4 shadow-sheet backdrop-blur-xl"
+            className={PANEL_BODY}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink/15" aria-hidden="true" />
 
@@ -390,7 +384,7 @@ export function ExplorePanel() {
                 <Segmented id="time" options={TIMES} value={prefs.minutes} onChange={(minutes) => setPrefs({ ...prefs, minutes })} />
 
                 <p className="mt-4 mb-2 text-sm font-semibold text-ink/70">What's the mood?</p>
-                <div role="radiogroup" className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 py-1">
+                <div role="radiogroup" className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 py-1 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
                   {MOODS.map((mood) => (
                     <MoodTile key={mood} mood={mood} active={prefs.mood === mood} onClick={() => setPrefs({ ...prefs, mood })} />
                   ))}
@@ -405,15 +399,18 @@ export function ExplorePanel() {
                   </p>
                 )}
 
-                <m.button
-                  type="button"
-                  onClick={go}
-                  whileTap={{ scale: 0.98 }}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-forest to-moss py-4 text-base font-bold text-white shadow-float"
-                >
-                  <Sparkles size={18} aria-hidden="true" />
-                  Find my walk
-                </m.button>
+                {/* Pinned to the bottom of the panel so it's always in reach, even on a short screen. */}
+                <div className="sticky -bottom-4 -mx-4 -mb-4 mt-2 bg-gradient-to-t from-cream from-70% to-transparent px-4 pt-3 pb-4">
+                  <m.button
+                    type="button"
+                    onClick={go}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-forest to-moss py-4 text-base font-bold text-white shadow-float"
+                  >
+                    <Sparkles size={18} aria-hidden="true" />
+                    Find my walk
+                  </m.button>
+                </div>
               </>
             ) : (
               <div aria-live="polite" className="py-1">
@@ -444,7 +441,7 @@ export function ExplorePanel() {
             )}
           </m.section>
         ) : (
-          <m.section key="results" {...sheetMotion} aria-label="Places to go">
+          <m.section key="results" {...sheetMotion} aria-label="Places to go" className="md:flex md:min-h-0 md:flex-col">
             <div className="mx-3 mb-2.5 flex items-center justify-between gap-2 rounded-2xl bg-cream/90 py-2 pr-2 pl-3.5 shadow-float backdrop-blur-xl">
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-forest">{summary}</p>
@@ -471,7 +468,7 @@ export function ExplorePanel() {
                 </button>
               </div>
             ) : (
-              <ol ref={railRef} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1">
+              <ol ref={railRef} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1 md:min-h-0 md:flex-col md:snap-none md:overflow-x-visible md:overflow-y-auto">
                 {result?.cards.map((c, i) => (
                   <m.li
                     key={c.place.id + (result.source === 'gemma' ? '-g' : '-r')}
@@ -479,10 +476,10 @@ export function ExplorePanel() {
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.07, type: 'spring', stiffness: 400, damping: 32 }}
-                    className="w-[86%] max-w-sm shrink-0 snap-center"
+                    className="w-[86%] max-w-sm shrink-0 snap-center md:w-full md:max-w-none"
                     onClick={() => {
                       select(c.place.id, 'list');
-                      map?.easeTo({ center: [c.place.lon, c.place.lat], zoom: 15.5, padding: { top: 80, bottom: 260, left: 0, right: 0 }, duration: 700 });
+                      map?.easeTo({ center: [c.place.lon, c.place.lat], zoom: 15.5, padding: mapPadding(), duration: 700 });
                     }}
                   >
                     <PlaceCard card={c} rank={i + 1} selected={selectedId === c.place.id} />

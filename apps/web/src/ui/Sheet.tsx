@@ -10,11 +10,21 @@ export const sheetMotion = {
 } as const;
 
 /**
- * Where every panel sits: a bottom sheet above the tab bar on phones, a floating panel on the
- * left on wider screens.
+ * Where every panel sits: a bottom sheet above the tab bar on phones; on wider screens a sidebar
+ * on the left that starts under the logo and uses the full height, so nothing is cut off on a
+ * short laptop screen.
  */
 export const PANEL_POSITION =
-  'absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 md:right-auto md:left-4 md:w-[420px]';
+  'absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 md:top-[4.75rem] md:right-auto md:bottom-[5.5rem] md:left-1 md:flex md:w-[420px] md:flex-col';
+
+/** The panel body: capped at 70% height on phones, the sidebar's height on wider screens. */
+export const PANEL_BODY = 'mx-3 max-h-[70vh] overflow-y-auto rounded-[28px] bg-cream/95 px-4 pt-2 pb-4 shadow-sheet backdrop-blur-xl md:max-h-full md:min-h-0';
+
+/** True on screens where panels are a left sidebar (keep in step with the `md:` classes above). */
+export const isWide = () => window.matchMedia('(min-width: 768px)').matches;
+
+/** Map padding that keeps a point clear of whichever panel is showing. */
+export const mapPadding = () => (isWide() ? { top: 90, bottom: 110, left: 470, right: 60 } : { top: 80, bottom: 280, left: 40, right: 40 });
 
 export function Sheet({
   label,
@@ -35,7 +45,7 @@ export function Sheet({
       <m.section
         {...sheetMotion}
         aria-label={label}
-        className={`relative mx-3 max-h-[70vh] overflow-y-auto rounded-[28px] bg-cream/95 px-4 pt-2 pb-4 shadow-sheet backdrop-blur-xl ${className}`}
+        className={`relative ${PANEL_BODY} ${className}`}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink/15" aria-hidden="true" />
         {onClose && (
