@@ -27,7 +27,7 @@ Every return visit levels a place up: **Want to go → Visited → Favourite →
 ![Level up: Visited, Coffee Cart, 1 visit](https://raw.githubusercontent.com/harshitaphadtare/Ramble/main/docs/screenshots/level-up.jpg)
 *Arriving at the coffee stop: first visit, first level.*
 
-- **Get me outside:** time, mood and energy → nearby places from OpenStreetMap → instant picks, refined by Gemma with a reason for each.
+- **Find a walk:** time, mood and energy → nearby places from OpenStreetMap → instant picks, refined by Gemma with a reason for each.
 - **Plan a trip in your own words:** *"St Kilda today, coffee and fish and chips on the way, Comm Bank on the way back."* Gemma turns it into stops, you choose a real place for each, and Ramble routes it there and back. You can walk, cycle or drive.
 - **Walk here:** footpath route and live distance left, and a ping when you arrive. Location is only used during a walk.
 - **Check in and level up**, with a weekly goal and streak.
@@ -100,10 +100,6 @@ Gemma 4 is a reasoning model, and my first live calls failed with "unusable mode
 
 ### Plan a trip the way you'd say it
 Real outings aren't one destination. So you can just type: *"I'm going to St Kilda today. On the way I want a coffee and fish and chips, and on the way back I'll stop at Comm Bank, then home."* **Gemma** turns that into ordered stops — coffee (café) → fish and chips (takeaway) → St Kilda (destination) → Commonwealth Bank (way back) → home — as validated JSON. Gemma's job stops there: it never chooses the actual café or bank. Ramble searches OpenStreetMap through Photon, the open-source geocoder, and shows real options for each stop. Named places are ranked by relevance; "a coffee" is ranked by how far off your route it is. **You pick**, because an AI confidently sending you to the wrong bank is worse than one more tap. Then Ramble plans the route there and back, walking, cycling or driving each way. Prefer to do it yourself? Add as many stops as you like, reorder them, or flip one to the way back.
-
-When you reach a stop, Ramble pings you: *"You're at St Kilda Pier! Snap a few photos and add a note so you remember this place."* One tap checks in and opens the journal, and the trip carries on to the next stop.
-
-A bug I'm glad I caught: the walking route to St Kilda Pier came out at 18 km, because the pier's map point sits on the Williamstown ferry line and the router happily "walked" across the bay. Ramble now notices a ferry in a walking route and nudges the stop onto land before asking again.
 
 ### Habits, not just trips
 On first open Ramble asks one question: *how many days a week do you want to get outside?* The You tab then shows a progress ring for this week and a weekly streak (days out, not check-ins, so three cafés on one walk count once). Ramble also has a fog-of-war map (how much of your area you've explored), a heat map, a monthly "Wrapped", the weather, and an encrypted backup file.
@@ -179,7 +175,7 @@ Ramble works today. Here's where I want to take it:
 - **Best Use of TabPFN:** in-context predictions from your own anonymous visit history rank "places you'll love", opt-in, with no model training or hosting.
 - **Best Use of MongoDB Atlas:** the data layer for zero-knowledge, end-to-end-encrypted sync — Atlas holds only ciphertext.
 - **Best Use of Sentry Agent Tracing:** spans around every model and tool call (Gemma, SerpApi, TabPFN) with latency, tokens and outcomes.
-- **Best Use of GitHub Copilot:** GitHub Actions runs typecheck, lint, 88 tests and the build on every push.
+- **Best Use of GitHub Copilot:** the project is automated with GitHub Actions, which runs typecheck, security lint, 88 tests and the build on every push.
 
 <!-- ✏️ Checks before publishing:
   - Remove the Sentry line if you don't add a trace screenshot (the category asks for one).
