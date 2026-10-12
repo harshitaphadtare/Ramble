@@ -81,18 +81,18 @@ function MoodTile({ mood, active, onClick }: { mood: Mood; active: boolean; onCl
       aria-checked={active}
       onClick={onClick}
       whileTap={{ scale: 0.96 }}
-      className={`relative flex h-[84px] min-w-0 flex-col justify-between overflow-hidden rounded-2xl p-1.5 text-left text-white transition-shadow sm:h-[100px] sm:p-3 ${
+      className={`relative flex h-[84px] min-w-0 flex-col justify-between overflow-hidden rounded-2xl p-1.5 text-left text-white transition-shadow sm:max-md:h-[100px] sm:max-md:p-3 ${
         active ? 'shadow-float ring-2 ring-forest ring-offset-2 ring-offset-cream' : 'opacity-90'
       }`}
       style={{ background: gradient(s.from, s.to) }}
     >
-      <Icon className="size-[18px] sm:size-[22px]" strokeWidth={2.2} aria-hidden="true" />
+      <Icon className="size-[18px] sm:max-md:size-[22px]" strokeWidth={2.2} aria-hidden="true" />
       <span>
-        <span className="block text-[11px] leading-tight font-bold tracking-tight sm:text-[15px] sm:tracking-normal">{s.label}</span>
-        <span className="hidden text-[11px] font-medium text-white/80 sm:block">{s.blurb}</span>
+        <span className="block text-[11px] leading-tight font-bold tracking-tight sm:max-md:text-[15px] sm:max-md:tracking-normal md:text-[12px]">{s.label}</span>
+        <span className="hidden text-[11px] font-medium text-white/80 sm:max-md:block">{s.blurb}</span>
       </span>
       {active && (
-        <m.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full bg-white text-forest sm:top-2 sm:right-2">
+        <m.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full bg-white text-forest sm:max-md:top-2 sm:max-md:right-2">
           <Check size={13} strokeWidth={3} aria-hidden="true" />
         </m.span>
       )}
@@ -365,7 +365,8 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
 
   return (
     // Phones: full-width bottom sheet. Wider screens: centred above the menu; results get the full width.
-    <div className={`${stage === 'results' ? PANEL_POSITION_WIDE : PANEL_POSITION} ${hidden ? 'hidden' : ''}`}>
+    // display:none inline: the sidebar's md:flex would otherwise win over a `hidden` class.
+    <div className={stage === 'results' ? PANEL_POSITION_WIDE : PANEL_POSITION} style={hidden ? { display: 'none' } : undefined}>
       <AnimatePresence mode="wait">
         {stage !== 'results' ? (
           <m.section
@@ -410,7 +411,7 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                 <TasteHint />
 
                 {/* Side by side on wider screens so the whole form fits without scrolling. */}
-                <div className="grid gap-4 sm:grid-cols-2 sm:gap-3">
+                <div className="grid gap-4 sm:max-md:grid-cols-2 sm:max-md:gap-3">
                   <div>
                     <p className="mb-2 text-sm font-semibold text-ink/70">How long have you got?</p>
                     <Segmented
@@ -445,7 +446,7 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                 </div>
 
                 <p className="mt-4 mb-2 text-sm font-semibold text-ink/70">What's the mood?</p>
-                <div role="radiogroup" className="grid grid-cols-5 gap-1.5 py-1 sm:gap-2.5">
+                <div role="radiogroup" className="grid grid-cols-5 gap-1.5 py-1 sm:max-md:gap-2.5">
                   {MOODS.map((mood) => (
                     <MoodTile key={mood} mood={mood} active={prefs.mood === mood} onClick={() => setPrefs({ ...prefs, mood })} />
                   ))}
@@ -458,7 +459,7 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                 )}
 
                 {/* Pinned to the bottom of the panel so it's always in reach, even on a short screen. */}
-                <div className="sticky -bottom-4 -mx-4 -mb-4 mt-2 bg-gradient-to-t from-cream from-70% to-transparent px-4 pt-3 pb-4">
+                <div className="sticky -bottom-4 -mx-4 -mb-4 mt-2 bg-gradient-to-t from-cream from-70% to-transparent px-4 pt-3 pb-4 sm:-mx-5 sm:px-5">
                   <m.button
                     type="button"
                     onClick={go}
@@ -501,7 +502,7 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
             )}
           </m.section>
         ) : (
-          <m.section key="results" {...sheetMotion} aria-label="Places to go">
+          <m.section key="results" {...sheetMotion} aria-label="Places to go" className="md:flex md:min-h-0 md:flex-col">
             <div className="mx-3 mb-2.5 flex items-center justify-between gap-2 rounded-2xl bg-cream/90 py-2 pr-2 pl-3.5 shadow-float backdrop-blur-xl">
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-forest">{summary}</p>
@@ -531,7 +532,7 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                 </button>
               </div>
             ) : (
-              <ol ref={railRef} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1 lg:grid lg:grid-cols-3 lg:overflow-visible">
+              <ol ref={railRef} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1 md:min-h-0 md:flex-col md:snap-none md:overflow-x-visible md:overflow-y-auto md:px-2">
                 {result?.cards.map((c, i) => (
                   <m.li
                     key={c.place.id + (result.source === 'gemma' ? '-g' : '-r')}
@@ -539,7 +540,7 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.07, type: 'spring', stiffness: 400, damping: 32 }}
-                    className="w-[86%] max-w-sm shrink-0 snap-center sm:w-[300px] lg:w-auto lg:max-w-none"
+                    className="w-[86%] max-w-sm shrink-0 snap-center sm:w-[300px] md:w-full md:max-w-none"
                     onClick={() => {
                       select(c.place.id, 'list');
                       map?.easeTo({ center: [c.place.lon, c.place.lat], zoom: 15.5, padding: mapPadding(), duration: 700 });

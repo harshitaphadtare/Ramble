@@ -11,21 +11,30 @@ export const sheetMotion = {
 } as const;
 
 /**
- * Where every panel sits: just above the tab bar, full width on phones and centred on wider
- * screens.
+ * Where every panel sits.
+ * - Phones (and small tablets): a sheet above the tab bar, map on top.
+ * - Laptops (md+): a full-height sidebar on the right, so the map on the left stays clear for
+ *   routes and pins. Keep SIDEBAR_PX in step with the md:w-[420px] here.
  */
+export const SIDEBAR_PX = 420;
 export const PANEL_POSITION =
-  'absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 sm:left-1/2 sm:right-auto sm:w-[600px] sm:max-w-[calc(100%-1rem)] sm:-translate-x-1/2';
+  'absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 sm:left-1/2 sm:right-auto sm:w-[600px] sm:max-w-[calc(100%-1rem)] sm:-translate-x-1/2 md:top-[4.25rem] md:right-1 md:bottom-3 md:left-auto md:flex md:w-[420px] md:max-w-none md:translate-x-0 md:flex-col';
 
-/** For results: the cards get the full width on a laptop (all three side by side). */
-export const PANEL_POSITION_WIDE = PANEL_POSITION.replace('sm:w-[600px]', 'sm:w-[min(1000px,calc(100%-2rem))]');
+/** Same place; kept separate in case results ever need more room. */
+export const PANEL_POSITION_WIDE = PANEL_POSITION;
 
-/** The panel body, capped so the map stays visible above it. */
-export const PANEL_BODY = 'relative mx-3 max-h-[min(70vh,calc(100dvh-10rem))] overflow-y-auto rounded-[28px] bg-cream/95 px-4 pt-2 pb-4 shadow-sheet backdrop-blur-xl sm:px-5';
+/** The panel body: capped on phones so some map shows above it; the sidebar's full height on laptops. */
+export const PANEL_BODY =
+  'relative mx-3 max-h-[min(62vh,calc(100dvh-10rem))] overflow-y-auto rounded-[28px] bg-cream/95 px-4 pt-2 pb-4 shadow-sheet backdrop-blur-xl sm:px-5 md:max-h-full md:min-h-0 md:mx-2';
 
-/** Map padding that keeps a point clear of the panel above the tab bar. */
-export const mapPadding = () => ({ top: 80, bottom: 280, left: 40, right: 40 });
+/** True when panels are the right-hand sidebar (keep in step with the md: classes above). */
+export const isWide = () => window.matchMedia('(min-width: 768px)').matches;
 
+/** Map padding that keeps routes and pins in the part of the map you can actually see. */
+export const mapPadding = (under: 'cards' | 'sheet' = 'cards'): { top: number; bottom: number; left: number; right: number } =>
+  isWide()
+    ? { top: 90, bottom: 110, left: 60, right: SIDEBAR_PX + 50 }
+    : { top: 80, bottom: under === 'sheet' ? Math.round(window.innerHeight * 0.62) + 40 : 290, left: 40, right: 40 };
 /** Minimise the open panel back to just the map; tapping its tab opens it again. */
 export function MinimiseButton() {
   return (

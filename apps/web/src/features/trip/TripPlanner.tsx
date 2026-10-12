@@ -8,6 +8,7 @@ import { useWalkStore, type TripStop } from '../../app/store/walkStore';
 import type { LonLat } from '../../lib/geo/geo';
 import { MODE_LABEL, type TravelMode } from '../../lib/geo/route';
 import { distanceM } from '../../lib/geo/geo';
+import { mapPadding } from '../../ui/Sheet';
 import { searchPlaces, stopOptions, type FoundPlace } from '../../lib/places/search';
 
 const MODES: TravelMode[] = ['walk', 'bike', 'car'];
@@ -149,7 +150,7 @@ export function TripPlanner() {
           [Math.min(...lons), Math.min(...lats)],
           [Math.max(...lons), Math.max(...lats)],
         ],
-        { padding: { top: 90, bottom: 360, left: 50, right: 50 }, maxZoom: 15, duration: 700 },
+        { padding: mapPadding('sheet'), maxZoom: 15, duration: 700 },
       );
     }
   }, [stops]);

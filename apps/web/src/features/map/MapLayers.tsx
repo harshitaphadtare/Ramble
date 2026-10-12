@@ -45,7 +45,7 @@ export function MapLayers() {
   );
 
   return (
-    <div className={`pointer-events-none absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+5.5rem)] right-3 z-10 flex flex-col items-end gap-2 ${panelOpen ? 'max-sm:hidden' : ''}`}>
+    <div className={`pointer-events-none absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+5.5rem)] right-3 z-10 flex flex-col items-end gap-2 ${panelOpen ? 'md:right-[440px]' : ''} ${panelOpen ? 'max-sm:hidden' : ''}`}>
       <div className="pointer-events-auto flex flex-col gap-2">
         {btn('heat', Flame, 'Heat map: where you go most')}
         {btn('fog', CloudFog, 'Fog of war: how much of your area you have explored')}
