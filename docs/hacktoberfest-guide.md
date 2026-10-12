@@ -102,7 +102,7 @@
 
 Use the challenge's submission template and the tags `devchallenge` and `hf26challenge`.
 
-**Title idea:** *"I Built a Map That Remembers Where I Love to Wander (and Nudges Me Outside)"*
+**Title idea:** *"I Built a Map That Remembers Where I Love to Ramble (and Nudges Me Outside)"*
 
 1. **What I Built.** Your personal story, then the walk, then what Ramble does and who it's for.
 2. **Demo.** A ~2-minute video with ElevenLabs narration: open the link (no install) → "Get me outside" → Gemma's picks with reasons → walk → check in, level up → write a note → ✨ Polish → airplane mode, and the map and journal still work → "places you'll love" + a trail-closure alert → sign in on the laptop and the journal appears. Plus the Render link and screenshots.

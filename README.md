@@ -11,7 +11,7 @@ Ramble remembers the places you love, levels them up each time you return, nudge
 - **Plan a trip in your own words:** "St Kilda today, coffee and fish and chips on the way, Comm Bank on the way back, then home." **Gemma** turns it into ordered stops, Ramble finds a real place for each (Photon/OSM) and routes it. Or add as many stops as you like by hand. Walk, cycle or drive, each way, with the way home planned too.
 - **Walk here / trips:** route, live distance left, and on arrival: "You're here! Snap a few photos and add a note." Location is only tracked during a walk.
 - **Weekly goal & streak:** one question on first open (how many days a week?), a progress ring and a weekly streak.
-- **From Wander:** fog of war (explored %), heat map, monthly Wrapped, weather, encrypted backup file.
+- **Your map, your progress:** fog of war (explored %), heat map, monthly Wrapped, weather, encrypted backup file.
 - **Custom time:** 30 min to 8 hours.
 - **Check in & level up:** Want to go → Visited → Favourite → Regular → Local legend, with a celebration.
 - **Journal:** a note (type or dictate) and a photo per visit; **✨ Polish** sends that one note to Gemma, only when you tap it.
@@ -74,7 +74,7 @@ npm run smoke   # checks the live site like a user would
 ```
 
 ## Credits
-Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors via [Overpass](https://overpass-api.de) · tiles by [OpenFreeMap](https://openfreemap.org) · [MapLibre](https://maplibre.org) · routes by [OSRM](https://project-osrm.org) on the [FOSSGIS](https://routing.openstreetmap.de) server · [Gemma](https://ai.google.dev/gemma) on [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/) · [TabPFN](https://priorlabs.ai) · [SerpApi](https://serpapi.com) · [Better Auth](https://better-auth.com) · Ramble's ideas grew out of my earlier project [Wander](https://github.com/harshitaphadtare/Wander); this is a new build for the challenge.
+Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors via [Overpass](https://overpass-api.de) · tiles by [OpenFreeMap](https://openfreemap.org) · [MapLibre](https://maplibre.org) · routes by [OSRM](https://project-osrm.org) on the [FOSSGIS](https://routing.openstreetmap.de) server · [Gemma](https://ai.google.dev/gemma) on [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/) · [TabPFN](https://priorlabs.ai) · [SerpApi](https://serpapi.com) · [Better Auth](https://better-auth.com). Ramble is a new project built for the challenge.
 
 ## Licence
 [MIT](LICENSE)
