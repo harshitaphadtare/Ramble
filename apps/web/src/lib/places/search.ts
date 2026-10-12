@@ -37,6 +37,26 @@ const CATEGORY_TAGS: Record<StopCategory, string[]> = {
   shop: ['shop'],
 };
 
+/** A plain search word per category, for "any place of this kind". */
+const CATEGORY_WORD: Record<StopCategory, string> = {
+  cafe: 'cafe',
+  restaurant: 'restaurant',
+  fast_food: 'takeaway',
+  bar: 'bar',
+  bakery: 'bakery',
+  ice_cream: 'gelato',
+  supermarket: 'supermarket',
+  bank: 'bank',
+  atm: 'atm',
+  pharmacy: 'pharmacy',
+  park: 'park',
+  beach: 'beach',
+  viewpoint: 'lookout',
+  museum: 'museum',
+  library: 'library',
+  shop: 'shop',
+};
+
 const featureSchema = z.object({
   geometry: z.object({ coordinates: z.tuple([z.number(), z.number()]) }),
   properties: z
@@ -74,6 +94,11 @@ export async function searchPlaces(query: string, near: LonLat, opts: { category
   const q = query.trim().slice(0, 120);
   if (q.length < 2) return [];
   const params = new URLSearchParams({ q, lat: coarse(near[1]), lon: coarse(near[0]), limit: String(opts.limit ?? 8), lang: 'en' });
+  // For "a café"-type stops, nearby matters more than fame; for named places it's the other way round.
+  if (opts.category) {
+    params.set('zoom', '14');
+    params.set('location_bias_scale', '0.1');
+  }
   for (const tag of opts.category ? CATEGORY_TAGS[opts.category] : []) params.append('osm_tag', tag);
   const timeout = AbortSignal.timeout(10_000);
   const res = await fetch(`${PHOTON}?${params}`, {
@@ -103,12 +128,21 @@ export async function searchPlaces(query: string, near: LonLat, opts: { category
 
 /** The best match for a stop: the closest result to where it should be on the way. */
 export async function findStop(query: string, near: LonLat, category: StopCategory | null, signal?: AbortSignal): Promise<FoundPlace | null> {
-  let results = await searchPlaces(query, near, { category, limit: 10, signal });
-  // "fish and chips" might not be in a shop's name: fall back to any place of that category nearby.
-  if (!results.length && category) results = await searchPlaces(category.replace('_', ' '), near, { category, limit: 10, signal });
+  // "fish and chips" might not be in the nearest shop's name: also look for any place of that
+  // category nearby, and take whichever fits the route best.
+  const [named, anyOfKind] = await Promise.all([
+    searchPlaces(query, near, { category, limit: 10, signal }),
+    category ? searchPlaces(CATEGORY_WORD[category], near, { category, limit: 10, signal }).catch(() => []) : Promise.resolve([]),
+  ]);
+  const results = [...named, ...anyOfKind];
   if (!results.length) return null;
   // A named place ("St Kilda", "Comm Bank Bourke St"): trust Photon's ranking (already biased to
   // here). A kind of place ("coffee"): the closest one to where it fits on the way.
   if (!category) return results[0]!;
-  return results.reduce((best, r) => (distanceM(r.lonLat, near) < distanceM(best.lonLat, near) ? r : best));
+  // Prefer a real name match unless it's much further away than the nearest of that kind.
+  const nearest = (list: FoundPlace[]) => list.reduce((best, r) => (distanceM(r.lonLat, near) < distanceM(best.lonLat, near) ? r : best));
+  const bestNamed = named.length ? nearest(named) : null;
+  const bestAny = anyOfKind.length ? nearest(anyOfKind) : null;
+  if (bestNamed && (!bestAny || distanceM(bestNamed.lonLat, near) < distanceM(bestAny.lonLat, near) + 800)) return bestNamed;
+  return bestAny ?? bestNamed;
 }
