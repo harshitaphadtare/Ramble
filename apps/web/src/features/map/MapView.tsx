@@ -39,11 +39,16 @@ function meGeoJSON(pos: LonLat | null): FeatureCollection {
   };
 }
 
-function routeGeoJSON(route: { coords: LonLat[]; source: string } | null): FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: route ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: route.coords }, properties: { straight: route.source === 'straight' } }] : [],
-  };
+type RouteLike = { coords: LonLat[]; source: string } | null;
+
+/** The way there, and the way back (drawn in a lighter green underneath). */
+function routeGeoJSON(route: RouteLike, back: RouteLike = null): FeatureCollection {
+  const leg = (r: NonNullable<RouteLike>, isBack: boolean) => ({
+    type: 'Feature' as const,
+    geometry: { type: 'LineString' as const, coordinates: r.coords },
+    properties: { straight: r.source === 'straight', back: isBack },
+  });
+  return { type: 'FeatureCollection', features: [...(back ? [leg(back, true)] : []), ...(route ? [leg(route, false)] : [])] };
 }
 
 /** The user's places, coloured by level. */
@@ -78,7 +83,7 @@ function addRambleLayers(m: maplibregl.Map) {
     source: ROUTE,
     filter: ['==', ['get', 'straight'], false],
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#1d3a2a', 'line-width': 5 },
+    paint: { 'line-color': ['case', ['get', 'back'], '#6fa36b', '#1d3a2a'], 'line-width': 5 },
   });
   m.addLayer({
     id: `${ROUTE}-straight`,
@@ -86,7 +91,7 @@ function addRambleLayers(m: maplibregl.Map) {
     source: ROUTE,
     filter: ['==', ['get', 'straight'], true],
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#1d3a2a', 'line-width': 4, 'line-dasharray': [1, 1.5] },
+    paint: { 'line-color': ['case', ['get', 'back'], '#6fa36b', '#1d3a2a'], 'line-width': 4, 'line-dasharray': [1, 1.5] },
   });
   m.addSource(SAVED, { type: 'geojson', data: savedGeoJSON([], []) });
   m.addLayer({
@@ -154,6 +159,7 @@ export function MapView() {
   const userPos = useMapStore((s) => s.userPos);
   const places = useUserStore((s) => s.places);
   const route = useWalkStore((s) => s.route);
+  const backRoute = useWalkStore((s) => s.backRoute);
   const visits = useUserStore((s) => s.visits);
 
   useEffect(() => {
@@ -198,10 +204,11 @@ export function MapView() {
   }, [map, places, visits]);
 
   useEffect(() => {
-    (map?.getSource(ROUTE) as maplibregl.GeoJSONSource | undefined)?.setData(routeGeoJSON(route));
+    (map?.getSource(ROUTE) as maplibregl.GeoJSONSource | undefined)?.setData(routeGeoJSON(route, backRoute));
     if (map && route && route.coords.length > 1) {
-      const lons = route.coords.map((c) => c[0]);
-      const lats = route.coords.map((c) => c[1]);
+      const all = [...route.coords, ...(backRoute?.coords ?? [])];
+      const lons = all.map((c) => c[0]);
+      const lats = all.map((c) => c[1]);
       map.fitBounds(
         [
           [Math.min(...lons), Math.min(...lats)],
@@ -210,7 +217,7 @@ export function MapView() {
         { padding: { top: 150, bottom: 120, left: 40, right: 40 }, maxZoom: 16.5, duration: 800 },
       );
     }
-  }, [map, route]);
+  }, [map, route, backRoute]);
 
   // Tapping one of your places opens its details.
   useEffect(() => {

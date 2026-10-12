@@ -8,10 +8,16 @@ const C: LonLat = [144.965, -37.815];
 
 describe('route maths', () => {
   it('straight-line fallback estimates time at walking pace', () => {
-    const r = straightRoute(A, B);
+    const r = straightRoute([A, B]);
     expect(r.source).toBe('straight');
     expect(r.distanceM).toBeCloseTo(distanceM(A, B), 5);
     expect(r.durationS).toBeCloseTo(r.distanceM / (80 / 60), 5);
+  });
+
+  it('straight-line fallback goes through every stop, faster when driving', () => {
+    const walk = straightRoute([A, B, C]);
+    expect(walk.distanceM).toBeCloseTo(distanceM(A, B) + distanceM(B, C), 5);
+    expect(straightRoute([A, B, C], 'car').durationS).toBeLessThan(walk.durationS);
   });
 
   it('measures what is left along the route from the nearest point', () => {

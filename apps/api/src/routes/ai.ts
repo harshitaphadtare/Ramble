@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import type { ZodType } from 'zod';
-import { polishRequestSchema, rulePicks, suggestRequestSchema } from '@ramble/shared';
+import { polishRequestSchema, rulePicks, suggestRequestSchema, tripPlanRequestSchema } from '@ramble/shared';
+import { planTrip } from '../lib/tripPlan';
 import { suggest, type SuggestDeps } from '../lib/suggest';
 import { polish } from '../lib/polish';
 import { createDailyBudget, createWindowLimiter, rateLimit, sameOriginOnly } from '../middleware/rateLimit';
@@ -66,6 +67,24 @@ export function aiRoutes({ perHour = 30, polishPerHour = 20, dailyBudget = 400, 
       onMeta: (meta) => log?.info({ task: 'polish', ...meta }, 'gemma reply'),
       onFallback: (why) => log?.warn({ task: 'polish', why }, 'gemma fallback'),
     });
+    return c.json(result);
+  });
+
+  // Like the note, the plan is private: only processing metrics are logged.
+  r.post('/plan-trip', rateLimit(createWindowLimiter({ limit: polishPerHour, windowMs: HOUR })), async (c) => {
+    const body = await readJson(c, tripPlanRequestSchema);
+    if (!body.ok) return body.res;
+    const log = c.get('log');
+    if (!budget.take()) {
+      log?.warn({ task: 'plan-trip' }, 'daily AI budget used up');
+      return c.json({ stops: [], returnHome: false, mode: null, backMode: null, source: 'none' });
+    }
+    const result = await planTrip(body.data, {
+      run,
+      onMeta: (meta) => log?.info({ task: 'plan-trip', ...meta }, 'gemma reply'),
+      onFallback: (why) => log?.warn({ task: 'plan-trip', why }, 'gemma fallback'),
+    });
+    log?.info({ task: 'plan-trip', source: result.source, stops: result.stops.length });
     return c.json(result);
   });
 

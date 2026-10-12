@@ -6,3 +6,4 @@ export * from './places';
 export * from './domain';
 export * from './overpass';
 export * from './polish';
+export * from './trip';

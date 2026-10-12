@@ -23,7 +23,7 @@ const placeName = z
   .regex(/^[\p{L}\p{M}\p{N} '’.,&()\-/]+$/u, 'unsupported characters');
 
 export const suggestContextSchema = z.object({
-  minutes: z.number().int().min(15).max(240),
+  minutes: z.number().int().min(15).max(480),
   mood: z.enum(MOODS),
   energy: z.enum(ENERGIES),
   /** Minutes until sunset (negative = after sunset). Computed on the device. */

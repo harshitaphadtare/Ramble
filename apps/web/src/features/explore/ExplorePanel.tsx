@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { Bookmark, BookmarkCheck, Check, Footprints, Navigation, MapPinCheck, SlidersHorizontal, Sparkles, WifiOff, Zap } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Check, Compass, Footprints, Navigation, MapPinCheck, Route, SlidersHorizontal, Sparkles, WifiOff, Zap } from 'lucide-react';
 import { MOODS, type Energy, type Mood, type OutdoorPlace } from '@ramble/shared';
 import { useMapStore } from '../../app/store/mapStore';
 import { useUiStore } from '../../app/store/uiStore';
@@ -13,14 +13,20 @@ import { LevelBadge } from '../../ui/Level';
 import { LocationButton, LocationError } from '../map/LocationButton';
 import type { LonLat } from '../../lib/geo/geo';
 import { KIND_STYLE, MOOD_STYLE, gradient } from '../../ui/visuals';
-import { MinimiseButton, PANEL_BODY, PANEL_POSITION, mapPadding, sheetMotion } from '../../ui/Sheet';
+import { MinimiseButton, PANEL_BODY, PANEL_POSITION, PANEL_POSITION_WIDE, mapPadding, sheetMotion } from '../../ui/Sheet';
+import { TripPlanner } from '../trip/TripPlanner';
 import { explore, type ExploreCard, type ExplorePrefs, type ExploreResult } from './explore';
 
+/** Sentinel for the "Custom" time option (then a slider picks the minutes). */
+const CUSTOM = -1;
+const MAX_MINUTES = 480;
 const TIMES = [
   { value: 30, label: '30 min' },
   { value: 60, label: '1 hour' },
   { value: 120, label: '2 hours' },
+  { value: CUSTOM, label: 'Custom' },
 ];
+const fmtMinutes = (min: number) => (min < 60 ? `${min} min` : min % 60 ? `${Math.floor(min / 60)} h ${min % 60} m` : `${min / 60} hour${min === 60 ? '' : 's'}`);
 const ENERGIES: { value: Energy; label: string }[] = [
   { value: 'easy', label: 'Easy stroll' },
   { value: 'moderate', label: 'Steady' },
@@ -42,7 +48,7 @@ function Segmented<T extends string | number>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div role="radiogroup" className="grid grid-cols-3 gap-1 rounded-2xl bg-mist p-1">
+    <div role="radiogroup" className="grid gap-1 rounded-2xl bg-mist p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -244,6 +250,8 @@ function TasteHint() {
 
 export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
   const [prefs, setPrefs] = useState<ExplorePrefs>({ minutes: 60, mood: 'nature', energy: 'easy' });
+  const [mode, setMode] = useState<'walk' | 'trip'>('walk');
+  const [customTime, setCustomTime] = useState(false);
   const [stage, setStage] = useState<Stage>('setup');
   const [error, setError] = useState(false);
   const [result, setResult] = useState<ExploreResult | null>(null);
@@ -353,13 +361,11 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
     setPins([]);
   }
 
-  const summary = `${TIMES.find((t) => t.value === prefs.minutes)?.label} · ${MOOD_STYLE[prefs.mood].label} · ${
-    ENERGIES.find((e) => e.value === prefs.energy)?.label
-  }`;
+  const summary = `${fmtMinutes(prefs.minutes)} · ${MOOD_STYLE[prefs.mood].label} · ${ENERGIES.find((e) => e.value === prefs.energy)?.label}`;
 
   return (
-    // Phones: full-width bottom sheet. Larger screens: a floating panel on the left, like a desktop maps app.
-    <div className={`${PANEL_POSITION} ${hidden ? 'hidden' : ''}`}>
+    // Phones: full-width bottom sheet. Wider screens: centred above the menu; results get the full width.
+    <div className={`${stage === 'results' ? PANEL_POSITION_WIDE : PANEL_POSITION} ${hidden ? 'hidden' : ''}`}>
       <AnimatePresence mode="wait">
         {stage !== 'results' ? (
           <m.section
@@ -373,19 +379,64 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
 
             {stage === 'setup' ? (
               <>
-                <p className="text-[11px] font-bold tracking-[0.14em] text-moss uppercase">Get me outside</p>
+                <div className="mb-3 flex items-center gap-1 pr-10" role="tablist" aria-label="What would you like to do?">
+                  {(
+                    [
+                      ['walk', 'Find a walk', Compass],
+                      ['trip', 'Plan a trip', Route],
+                    ] as const
+                  ).map(([id, label, Icon]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="tab"
+                      aria-selected={mode === id}
+                      onClick={() => setMode(id)}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition-colors ${mode === id ? 'bg-forest text-cream' : 'text-ink/55 hover:bg-mist'}`}
+                    >
+                      <Icon size={14} aria-hidden="true" /> {label}
+                    </button>
+                  ))}
+                </div>
                 <div className="mb-4 flex items-end justify-between gap-3">
-                  <h2 className="font-display text-[28px] leading-[1.1] font-semibold tracking-tight text-forest">Where to today?</h2>
+                  <h2 className="font-display text-[28px] leading-[1.1] font-semibold tracking-tight text-forest">{mode === 'walk' ? 'Where to today?' : 'Where are you off to?'}</h2>
                   <LocationButton />
                 </div>
                 <LocationError />
+                {mode === 'trip' ? (
+                  <TripPlanner />
+                ) : (
+                  <>
                 <TasteHint />
 
                 {/* Side by side on wider screens so the whole form fits without scrolling. */}
                 <div className="grid gap-4 sm:grid-cols-2 sm:gap-3">
                   <div>
                     <p className="mb-2 text-sm font-semibold text-ink/70">How long have you got?</p>
-                    <Segmented id="time" options={TIMES} value={prefs.minutes} onChange={(minutes) => setPrefs({ ...prefs, minutes })} />
+                    <Segmented
+                      id="time"
+                      options={TIMES}
+                      value={customTime ? CUSTOM : prefs.minutes}
+                      onChange={(v) => {
+                        setCustomTime(v === CUSTOM);
+                        setPrefs({ ...prefs, minutes: v === CUSTOM ? Math.max(prefs.minutes, 180) : v });
+                      }}
+                    />
+                    {customTime && (
+                      <div className="mt-2 flex items-center gap-3 rounded-xl bg-white px-3 py-2">
+                        <input
+                          type="range"
+                          min={15}
+                          max={MAX_MINUTES}
+                          step={15}
+                          value={prefs.minutes}
+                          onChange={(e) => setPrefs({ ...prefs, minutes: Number(e.target.value) })}
+                          aria-label="How many minutes you have"
+                          className="flex-1 accent-forest"
+                        />
+                        <span className="w-16 text-right text-sm font-bold text-forest tabular-nums">{fmtMinutes(prefs.minutes)}</span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="mb-2 text-sm font-semibold text-ink/70">Energy</p>
@@ -418,6 +469,8 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                     Find my walk
                   </m.button>
                 </div>
+                  </>
+                )}
               </>
             ) : (
               <div aria-live="polite" className="py-1">
@@ -478,7 +531,7 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                 </button>
               </div>
             ) : (
-              <ol ref={railRef} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1">
+              <ol ref={railRef} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1 lg:grid lg:grid-cols-3 lg:overflow-visible">
                 {result?.cards.map((c, i) => (
                   <m.li
                     key={c.place.id + (result.source === 'gemma' ? '-g' : '-r')}
@@ -486,7 +539,7 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.07, type: 'spring', stiffness: 400, damping: 32 }}
-                    className="w-[86%] max-w-sm shrink-0 snap-center sm:w-[300px]"
+                    className="w-[86%] max-w-sm shrink-0 snap-center sm:w-[300px] lg:w-auto lg:max-w-none"
                     onClick={() => {
                       select(c.place.id, 'list');
                       map?.easeTo({ center: [c.place.lon, c.place.lat], zoom: 15.5, padding: mapPadding(), duration: 700 });

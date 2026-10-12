@@ -17,6 +17,9 @@ export const sheetMotion = {
 export const PANEL_POSITION =
   'absolute inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-10 sm:left-1/2 sm:right-auto sm:w-[600px] sm:max-w-[calc(100%-1rem)] sm:-translate-x-1/2';
 
+/** For results: the cards get the full width on a laptop (all three side by side). */
+export const PANEL_POSITION_WIDE = PANEL_POSITION.replace('sm:w-[600px]', 'sm:w-[min(1000px,calc(100%-2rem))]');
+
 /** The panel body, capped so the map stays visible above it. */
 export const PANEL_BODY = 'relative mx-3 max-h-[min(70vh,calc(100dvh-10rem))] overflow-y-auto rounded-[28px] bg-cream/95 px-4 pt-2 pb-4 shadow-sheet backdrop-blur-xl sm:px-5';
 
