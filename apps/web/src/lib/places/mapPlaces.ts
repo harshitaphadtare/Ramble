@@ -81,11 +81,13 @@ export function placesFromMap(map: MapLibreMap): OutdoorPlace[] {
 }
 
 /**
- * Named parks and POIs only appear in OpenMapTiles data from zoom 14, so zoom in around the
- * origin first and wait for those tiles before reading them.
+ * Named parks and POIs only appear in OpenMapTiles data from zoom 14, and at street zoom the
+ * view is too small to hold any parks. So go to park zoom (~14.5) around the origin first and
+ * wait for those tiles before reading them.
  */
 export async function placesFromMapAround(map: MapLibreMap, origin: [number, number], timeoutMs = 8000): Promise<OutdoorPlace[]> {
-  if (map.getZoom() < 14.5 || map.getBounds().contains(origin) === false) {
+  const z = map.getZoom();
+  if (z < 14.2 || z > 15.2 || map.getBounds().contains(origin) === false) {
     const idle = new Promise<void>((resolve) => {
       const t = setTimeout(resolve, timeoutMs);
       map.once('idle', () => {

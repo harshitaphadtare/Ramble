@@ -180,6 +180,8 @@ function CardActions({ place }: { place: OutdoorPlace }) {
     setBusy(true);
     try {
       await action();
+    } catch {
+      showToast("Couldn't save that on this device. Try again.");
     } finally {
       setBusy(false);
     }
@@ -505,6 +507,9 @@ export function ExplorePanel({ hidden = false }: { hidden?: boolean }) {
                   </div>
                 ))}
                 <p className="mt-2 text-center text-xs text-ink/50">The first search in a new area can take a few seconds.</p>
+                <button type="button" onClick={edit} className="mx-auto mt-2 block rounded-xl px-3 py-1.5 text-sm font-semibold text-ink/60 hover:bg-mist">
+                  Cancel
+                </button>
               </div>
             )}
           </m.section>

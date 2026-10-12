@@ -249,7 +249,7 @@ export function MapView() {
     (map?.getSource(SAVED) as maplibregl.GeoJSONSource | undefined)?.setData(savedGeoJSON(places, visits));
   }, [map, places, visits]);
 
-  // Heat map / fog of war (Wander's map views), drawn only while switched on.
+  // Heat map / fog of war, drawn only while switched on.
   useEffect(() => {
     if (!map) return;
     map.setLayoutProperty(`${HEAT}-layer`, 'visibility', mapLayer === 'heat' ? 'visible' : 'none');

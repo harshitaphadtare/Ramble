@@ -99,7 +99,10 @@ export async function placesNear(origin: LonLat, map: MapLibreMap | null, signal
 
   const fromMap = map ? await placesFromMapAround(map, origin) : [];
   if (fromMap.length) return fromMap; // not cached: the API may still deliver the fuller list
-  return fromApi; // nothing on the map either: wait for the API after all
+  // Nothing on the map either: wait for the API after all, but never forever (the first call
+  // can include the free server waking up, ~50 s).
+  const giveUp = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('places timed out')), 75_000));
+  return Promise.race([fromApi, giveUp]);
 }
 
 export function minutesToSunset(origin: LonLat, now = new Date()): number {

@@ -61,6 +61,8 @@ export function CheckInPanel() {
       const visit = await checkIn(place.id);
       showToast(`Checked in at ${place.name}`);
       openComposer({ placeId: place.id, visitId: visit.id });
+    } catch {
+      showToast("Couldn't save that check-in on this device. Try again.");
     } finally {
       setBusyKey(null);
     }
@@ -85,6 +87,9 @@ export function CheckInPanel() {
       {!userPos ? (
         <p className="rounded-2xl bg-white p-4 text-sm leading-relaxed text-ink/70">
           Share your location to see the places around you. Every check-in levels a place up, from <b>Visited</b> to <b>Local legend</b>.
+          <span className="mt-2 block text-ink/60">
+            No location? Zoom in and <b>tap any place on the map</b>, then <b>I'm here</b>. Or use <b>Explore</b> and tap I'm here on a suggestion.
+          </span>
         </p>
       ) : (
         <>

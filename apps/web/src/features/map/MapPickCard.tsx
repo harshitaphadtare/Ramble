@@ -17,12 +17,16 @@ export function MapPickCard() {
 
   async function here() {
     if (!pick) return;
-    const { savePlace, checkIn } = useUserStore.getState();
-    const place = await savePlace({ name: pick.name, kind: pick.kind, lonLat: pick.lonLat }, false);
-    const visit = await checkIn(place.id);
-    close();
-    useUiStore.getState().showToast(`Checked in at ${place.name}`);
-    useUiStore.getState().openComposer({ placeId: place.id, visitId: visit.id });
+    try {
+      const { savePlace, checkIn } = useUserStore.getState();
+      const place = await savePlace({ name: pick.name, kind: pick.kind, lonLat: pick.lonLat }, false);
+      const visit = await checkIn(place.id);
+      close();
+      useUiStore.getState().showToast(`Checked in at ${place.name}`);
+      useUiStore.getState().openComposer({ placeId: place.id, visitId: visit.id });
+    } catch {
+      useUiStore.getState().showToast("Couldn't save that check-in on this device. Try again.");
+    }
   }
 
   return (

@@ -2,7 +2,7 @@ import type { FeatureCollection, Polygon } from 'geojson';
 import type { LonLat } from './geo';
 
 /**
- * Fog of war (from Wander): the area around you is mist, and every place you've checked in at
+ * Fog of war: the area around you is mist, and every place you've checked in at
  * clears a circle. "Explored %" = share of ~150 m cells within 1.5 km of the centre that are
  * clear. Everything is worked out on the device.
  */

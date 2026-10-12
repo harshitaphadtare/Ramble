@@ -384,7 +384,9 @@ export function TripPlanner() {
         >
           <Route size={18} aria-hidden="true" />
           {destIndex < 0
-            ? 'Add a place to start'
+            ? stops.length
+              ? 'Set one stop as "on the way there"'
+              : 'Add a place to start'
             : unchosen
               ? `Choose ${unchosen} stop${unchosen === 1 ? '' : 's'} above first`
               : `Start trip · ${stops.filter((s) => roundTrip || s.leg === 'out').length} stop${stops.length === 1 ? '' : 's'}${roundTrip ? ' + home' : ''}`}

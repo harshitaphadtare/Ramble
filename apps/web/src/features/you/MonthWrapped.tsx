@@ -4,7 +4,7 @@ import { useUserStore } from '../../app/store/userStore';
 
 const WEEKDAYS = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
 
-/** Ramble Wrapped (from Wander): a monthly recap worked out on the device. */
+/** Ramble Wrapped: a monthly recap worked out on the device. */
 export function MonthWrapped() {
   const { places, visits, journal } = useUserStore();
   const [offset, setOffset] = useState(0);

@@ -58,6 +58,8 @@ interface WalkState {
   startTrip: (plan: TripPlan) => Promise<void>;
   /** Move on from the stop you've arrived at. */
   next: () => void;
+  /** "I'm here": mark arrival yourself (GPS can be off by a block between tall buildings, or off). */
+  arrive: () => void;
   stop: () => void;
 }
 
@@ -198,6 +200,10 @@ export const useWalkStore = create<WalkState>((set, get) => ({
       return;
     }
     set({ index: index + 1, target: upcoming.target, status: 'walking' });
+  },
+
+  arrive: () => {
+    if (get().status === 'walking') set({ status: 'arrived' });
   },
 
   stop: () => {

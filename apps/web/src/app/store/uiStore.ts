@@ -32,7 +32,7 @@ interface UiState {
   exploreMode: 'walk' | 'trip';
   /** Set when a new version of Ramble is ready; calling it reloads into it. */
   applyUpdate: (() => void) | null;
-  /** Extra map view from Wander: where you go most (heat), or what you haven't explored (fog). */
+  /** Extra map view: where you go most (heat), or what you haven't explored (fog). */
   mapLayer: 'none' | 'heat' | 'fog';
   /** Where the fog of war is measured from (fixed when it's switched on, so panning doesn't move it). */
   fogCentre: [number, number] | null;

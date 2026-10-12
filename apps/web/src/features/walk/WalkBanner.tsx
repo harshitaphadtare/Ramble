@@ -11,7 +11,7 @@ const MODE_VERB: Record<TravelMode, string> = { walk: 'Walking', bike: 'Cycling'
 
 /** Floating banner during a walk or trip: what's next, distance left, and the arrival prompt. */
 export function WalkBanner() {
-  const { status, plan, index, target, route, backRoute, remainingM, error, fromMap, stop, next } = useWalkStore();
+  const { status, plan, index, target, route, backRoute, remainingM, error, fromMap, stop, next, arrive } = useWalkStore();
   const visible = status !== 'idle' && (target || status === 'done');
   const total = plan ? plan.stops.length + (plan.backMode ? 1 : 0) : 0;
   const isHome = !!plan && index >= plan.stops.length;
@@ -23,16 +23,20 @@ export function WalkBanner() {
   /** "Since you're here": check in, then write the memory; the trip carries on afterwards. */
   async function remember() {
     if (!target) return;
-    const { places, savePlace, checkIn } = useUserStore.getState();
-    const place =
-      places.find((p) => p.id === target.placeId) ??
-      (target.sourceId
-        ? await savePlace({ id: target.sourceId, name: target.name, kind: target.kind, lon: target.lonLat[0], lat: target.lonLat[1] }, false)
-        : await savePlace({ name: target.name, kind: target.kind, lonLat: target.lonLat }, false));
-    const visit = await checkIn(place.id);
-    next();
-    useUiStore.getState().showToast(`Checked in at ${place.name}`);
-    useUiStore.getState().openComposer({ placeId: place.id, visitId: visit.id });
+    try {
+      const { places, savePlace, checkIn } = useUserStore.getState();
+      const place =
+        places.find((p) => p.id === target.placeId) ??
+        (target.sourceId
+          ? await savePlace({ id: target.sourceId, name: target.name, kind: target.kind, lon: target.lonLat[0], lat: target.lonLat[1] }, false)
+          : await savePlace({ name: target.name, kind: target.kind, lonLat: target.lonLat }, false));
+      const visit = await checkIn(place.id);
+      next();
+      useUiStore.getState().showToast(`Checked in at ${place.name}`);
+      useUiStore.getState().openComposer({ placeId: place.id, visitId: visit.id });
+    } catch {
+      useUiStore.getState().showToast("Couldn't save that check-in on this device. Try again.");
+    }
   }
 
   return (
@@ -100,8 +104,13 @@ export function WalkBanner() {
                   {status === 'error' && (error ?? "Couldn't start the trip.")}
                 </p>
               </div>
+              {status === 'walking' && (
+                <button type="button" onClick={arrive} title="Mark that you've arrived" className="rounded-xl bg-cream px-2.5 py-2 text-xs font-bold whitespace-nowrap text-forest">
+                  I'm here
+                </button>
+              )}
               {status === 'walking' && total > 1 && (
-                <button type="button" onClick={next} title="Skip to the next stop" className="rounded-xl bg-white/10 px-2.5 py-2 text-xs font-semibold">
+                <button type="button" onClick={next} title="Skip this stop" className="rounded-xl bg-white/10 px-2.5 py-2 text-xs font-semibold">
                   Skip
                 </button>
               )}

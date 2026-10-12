@@ -3,7 +3,7 @@ import type { JournalEntry, Place, Visit } from '@ramble/shared';
 import { fromBase64 as unb64, toBase64 as b64 } from './encoding';
 
 /**
- * Backup file (from Wander): your places, visits and journal notes, encrypted with a passphrase
+ * Backup file: your places, visits and journal notes, encrypted with a passphrase
  * you choose (PBKDF2-SHA256 → AES-GCM-256), so the file is safe to keep in email or a drive.
  * Photos aren't included (they'd make the file huge); sync covers those.
  */
